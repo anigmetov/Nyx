@@ -13,13 +13,14 @@ using std::string;
 
 #ifndef NO_HYDRO
 void
-Nyx::just_the_hydro (Real time,
+Nyx::just_the_hydro_split (Real time,
                      Real dt,
                      Real a_old,
                      Real a_new)
 {
-    BL_PROFILE("Nyx::just_the_hydro()");
+    BL_PROFILE("Nyx::just_the_hydro_split()");
 
+    int sdc_iter;
     const Real prev_time    = state[State_Type].prevTime();
     const Real cur_time     = state[State_Type].curTime();
     const int  finest_level = parent->finestLevel();
@@ -37,19 +38,6 @@ Nyx::just_the_hydro (Real time,
         }
         amrex::Abort("time should equal prev_time in just_the_hydro!");
     }
-
-#ifndef NDEBUG
-    if (S_old.contains_nan(Density, S_old.nComp(), 0))
-    {
-        for (int i = 0; i < S_old.nComp(); i++)
-        {
-            if (ParallelDescriptor::IOProcessor())
-                std::cout << "just_the_hydro: testing component " << i << " for NaNs" << std::endl;
-            if (S_old.contains_nan(Density+i,1,0))
-                amrex::Abort("S_old has NaNs in this component");
-        }
-    }
-#endif
 
     // It's possible for interpolation to create very small negative values for
     // species so we make sure here that all species are non-negative after this
@@ -86,30 +74,15 @@ Nyx::just_the_hydro (Real time,
     {
        if (strang_split)
        {
-          std::cout << "Source terms are handled with strang splitting" << std::endl; 
+          std::cout << "Source terms are handled with strang splitting, not defined here" << std::endl; 
+	  amrex::Abort("Called for strang_split, using Nyx_hydro_split.cpp");
        } else {
 	 if(sdc_split)
 	   std::cout << "Source terms are handled with sdc splitting" << std::endl; 
 	 else
-          std::cout << "Source terms are handled with predictor/corrector" << std::endl; 
+          std::cout << "Source terms are handled with predictor/corrector, not defined here" << std::endl; 
+	  amrex::Abort("Called for predict/correct, using Nyx_hydro_split.cpp");
        }
-    }
-
-
-    // If using predictor/corrector, get old source term for prediction????
-    if (add_ext_src && !strang_split)
-    {
-      if(!sdc_split)
-	{
-#ifndef NO_OLD_SRC
-        get_old_source(prev_time, dt, ext_src_old);
-#endif //#ifndef NO_OLD_SRC
-        ext_src_old.FillBoundary();
-	}
-      /*      else
-	{
-	  MultiFab::Copy(ext_src_old, D_old_tmp , ,Diag1_comp,1,0);
-	  }*/
     }
 
     // Define the gravity vector so we can pass this to ca_umdrv.
@@ -141,15 +114,14 @@ Nyx::just_the_hydro (Real time,
     FillPatch(*this, D_old_tmp, NUM_GROW, time, DiagEOS_Type, 0, D_old.nComp());
 
 
-    //
-    // Take first strang step from time to time+dt/2
-    // Output variables into temporary containers
-    //
-    if (add_ext_src && strang_split) 
-        strang_first_step(time,dt,S_old_tmp,D_old_tmp);
+    //Begin loop over SDC iterations
 
+    for(sdc_iter = 0; sdc_iter < 2; sdc_iter++)
+      {
+    //Construct advective terms using I_R from the last timestep as source
+    //////////////////Add back in
 
-    //
+	/*
     // Gives us I^0 from integration, will add using previous I later
     // Stores I^0 in D_old_tmp(diag_comp)
     if (add_ext_src && sdc_split)
@@ -157,7 +129,7 @@ Nyx::just_the_hydro (Real time,
       sdc_zeroth_step(time,dt,S_old_tmp,D_old_tmp, ext_src_old);
       MultiFab::Copy(ext_src_old,D_old_tmp,Diag1_comp,Eint,1,0);
       }
-
+	*/
 
     // OPENMP loop over fort_advance_gas "advection"
 #ifdef _OPENMP
@@ -193,8 +165,6 @@ Nyx::just_the_hydro (Real time,
 
 	// Get F^(n+1/2)
 	// Possibly unsafe if .5*dt+.5*dt~=dt
-	if(sdc_split)
-	  dt=.5*dt;
 
 	fort_advance_gas
             (&time, bx.loVect(), bx.hiVect(), 
@@ -252,38 +222,6 @@ Nyx::just_the_hydro (Real time,
          }
        }
 
-#ifdef GRAVITY
-    if (verbose > 1)
-    {
-        Real added[2] = {e_added,ke_added};
-
-        const int IOProc = ParallelDescriptor::IOProcessorNumber();
-
-        ParallelDescriptor::ReduceRealSum(added, 2, IOProc);
-
-        if (ParallelDescriptor::IOProcessor())
-        {
-            const Real vol = D_TERM(dx[0],*dx[1],*dx[2]);
-
-            e_added  = vol*added[0];
-            ke_added = vol*added[1];
-
-            const Real sum_added = std::abs(e_added) + std::abs(ke_added);
-
-            if (sum_added > 0)
-            {
-                std::cout << "Gravitational work at level "
-                          << level
-                          << " is "
-                          << std::abs( e_added)/sum_added*100
-                          << " % into (rho e) and "
-                          << std::abs(ke_added)/sum_added*100
-                          << " % into (KE) " << '\n';
-            }
-        }
-    }
-#endif /*GRAVITY*/
-
     grav_vector.clear();
 
     ParallelDescriptor::ReduceRealMax(courno);
@@ -297,67 +235,16 @@ Nyx::just_the_hydro (Real time,
         amrex::Abort("CFL is too high at this level -- go back to a checkpoint and restart with lower cfl number");
     }
 
-#ifndef NDEBUG
-    if (S_new.contains_nan(Density, S_new.nComp(), 0))
-    {
-        for (int i = 0; i < S_new.nComp(); i++)
-        {
-            if (S_new.contains_nan(Density + i, 1, 0))
-            {
-                if (ParallelDescriptor::IOProcessor())
-                    std::cout << "BAD -- S_new component " << Density + i << 
-                    " has NaNs after the hydro update" << std::endl;
-                amrex::Abort();
-            }
-        }
-    }
-#endif
-
-    // Predictor-corrector source update
-    if (add_ext_src && !strang_split)
-    {
-        get_old_source(prev_time, dt, ext_src_old);
-        // Must compute new temperature in case it is needed in the source term
-        // evaluation
-        compute_new_temp();
-
-        // Compute source at new time (no ghost cells needed)
-        MultiFab ext_src_new(grids, dmap, NUM_STATE, 0);
-        ext_src_new.setVal(0);
-
-        get_new_source(prev_time, cur_time, dt, ext_src_new);
-
-        time_center_source_terms(S_new, ext_src_old, ext_src_new, dt);
-
-        compute_new_temp();
-    } // end if (add_ext_src && !strang_split)
-
-    //
     // Gives us I^1 from integration with F^(n+1/2) source
     // Stores I^1 in D_new(diag1_comp)
-    if (add_ext_src && sdc_split)
-      {
-	//fix earlier halving of dt
-	dt=2*dt;
-      sdc_first_step(time, dt, S_old, D_new, S_new);
-      MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
+
+
+    sdc_first_step(time, dt, S_old, D_new, S_new, ext_src_old);
+    MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
+
       }
+    //End loop over SDC iterations
 
 
-
-#ifndef NDEBUG
-    if (S_new.contains_nan(Density, S_new.nComp(), 0))
-        amrex::Abort("S_new has NaNs before the second strang call");
-#endif
-
-    // second strang
-    // This returns updated (rho e), (rho E), and Temperature
-    if (add_ext_src && strang_split)
-        strang_second_step(cur_time,dt,S_new,D_new);
-
-#ifndef NDEBUG
-    if (S_new.contains_nan(Density, S_new.nComp(), 0))
-        amrex::Abort("S_new has NaNs after the second strang call");
-#endif
 }
 #endif

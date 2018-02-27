@@ -18,6 +18,7 @@ CEXE_sources += bl_random_c.cpp
 
 ifneq ($(NO_HYDRO), TRUE)
 CEXE_sources += Nyx_hydro.cpp
+CEXE_sources += Nyx_hydro_split.cpp
 CEXE_sources += sum_integrated_quantities.cpp
 CEXE_sources += sum_utils.cpp
 CEXE_sources += strang_splitting.cpp

@@ -31,7 +31,7 @@ subroutine integrate_state_vode(lo, hi, &
 !       The state vars
 !
     use amrex_fort_module, only : rt => amrex_real
-    use meth_params_module, only : NVAR, URHO, UEDEN, UEINT, &
+    use meth_params_module, only : NVAR, URHO, UEDEN, UEINT, UMX, &
                                    NDIAG, TEMP_COMP, NE_COMP, ZHI_COMP, &
                                    SFNR_COMP,  SSNR_COMP, DIAG1_COMP, DIAG2_COMP, STRANG_COMP, gamma_minus_1
     use bl_constants_module, only: M_PI
@@ -61,8 +61,8 @@ subroutine integrate_state_vode(lo, hi, &
 
     integer :: i, j, k
     real(rt) :: z, z_end, a_end, rho, H_reion_z, He_reion_z
-    real(rt) :: T_orig, ne_orig, e_orig
-    real(rt) :: T_out , ne_out , e_out, mu, mean_rhob, T_H, T_He
+    real(rt) :: T_orig, ne_orig, e_orig, rho_src, rhoe_src, e_src
+    real(rt) :: T_out , ne_out , e_out, rho_out, mu, mean_rhob, T_H, T_He
     integer :: fn_out
     integer :: print_radius
     CHARACTER(LEN=80) :: FMT
@@ -133,6 +133,9 @@ subroutine integrate_state_vode(lo, hi, &
                 e_orig  = state(i,j,k,UEINT) / rho
                 T_orig  = diag_eos(i,j,k,TEMP_COMP)
                 ne_orig = diag_eos(i,j,k,  NE_COMP)
+                rho_src = src(i,j,k,URHO)
+                rhoe_src = src(i,j,k,UEINT)
+                e_src   = src(i,j,k,UMX)
 
                 if (inhomogeneous_on) then
                    H_reion_z = diag_eos(i,j,k,ZHI_COMP)
@@ -167,7 +170,7 @@ end if
 
 
                 call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
-                                              T_out ,ne_out ,e_out, fn_out)
+                                          rho_out, T_out ,ne_out ,e_out, fn_out, rho_src, e_src)
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
@@ -205,8 +208,17 @@ end if
                 endif
 
                 ! Update (rho e) and (rho E)
-                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho * (e_out-e_orig)
-                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + rho * (e_out-e_orig)
+                state(i,j,k,URHO) = rho_out
+                diag_eos(i,j,k, DIAG2_COMP) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
+!                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
+                state(i,j,k,UEINT) = rho_out * e_out
+
+                ! Store I_R
+                diag_eos(i,j,k, DIAG1_COMP) = a_end* rho_out *e_out-(a*rho* e_orig + a_end*a_end*half_dt*src(i,j,k,UEINT))
+                src(i,j,k,UEINT) = diag_eos(i,j,k,DIAG1_COMP)
+                
+                ! Use I_R to update rhoE
+                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + diag_eos(i,j,k,UEDEN)
 
                 ! Update T and ne
                 diag_eos(i,j,k,TEMP_COMP) = T_out
@@ -220,8 +232,7 @@ end if
                    diag_eos(i,j,k, STRANG_COMP) = fn_out
                    !half_dt is half of larger dt
                    ! mimics ext_src_hc source term
-                   diag_eos(i,j,k, DIAG1_COMP) = a * (e_out-e_orig)/half_dt
-                   diag_eos(i,j,k, DIAG2_COMP) = a
+!                   diag_eos(i,j,k, DIAG1_COMP) = a * (e_out-e_orig)/half_dt
 !                endif
 
 
@@ -232,11 +243,11 @@ end if
 end subroutine integrate_state_vode
 
 
-subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out, fn_out)
+subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_out, e_out, fn_out, rho_src, e_src)
 
     use amrex_fort_module, only : rt => amrex_real
     use vode_aux_module, only: rho_vode, T_vode, ne_vode, &
-                               i_vode, j_vode, k_vode, fn_vode, NR_vode
+                               i_vode, j_vode, k_vode, fn_vode, NR_vode, rho_src_vode, e_src_vode
     use meth_params_module, only: STRANG_COMP
     use bl_constants_module, only: M_PI
     use eos_params_module
@@ -248,14 +259,15 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out, fn_
     include "g_debug.h"
 
     real(rt), intent(in   ) :: dt
-    real(rt), intent(in   ) :: rho_in, T_in, ne_in, e_in
-    real(rt), intent(  out) ::         T_out,ne_out,e_out
+    real(rt), intent(in   ) :: rho_in,  T_in, ne_in, e_in
+    real(rt), intent(  out) :: rho_out, T_out,ne_out,e_out
     integer,  intent(  out) ::         fn_out
+    integer,  intent(in   ) ::         rho_src, e_src
 
     real(rt) mean_rhob
 
     ! Set the number of independent variables -- this should be just "e"
-    integer, parameter :: NEQ = 1
+    integer, parameter :: NEQ = 2
   
     ! Allocate storage for the input state
     real(rt) :: y(NEQ)
@@ -320,6 +332,8 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out, fn_
     rho_vode = rho_in
     fn_vode  = 0
     NR_vode  = 0
+    rho_src_vode = rho_src
+    e_src_vode = e_src
 
     ! We want VODE to re-initialize each time we call it
     istate = 1
@@ -338,17 +352,19 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out, fn_
     
     ! We will integrate "e" in time. 
     y(1) = e_in
+    y(2) = rho_in
 
     ! Set the tolerances.  
     mean_rhob = comoving_OmB * 3.d0*(comoving_h*100.d0)**2 / (8.d0*M_PI*Gconst)
-    if((rho_vode/mean_rhob .ge. 1.d2) .and. (T_vode .le. 4.5d5).and. .false.) then
+!    if((rho_vode/mean_rhob .ge. 1.d2) .and. (T_vode .le. 4.5d5).and. .false.) then
 !    if((rho_vode/mean_rhob .ge. 1.d2) .and. (T_vode .ge. 9.5d4) .and. (T_vode .le. 5.5d5)) then
-       atol(1) = 1.d-2 * e_in
-       condensed_region = .true.
-    else
+!       atol(1) = 1.d-2 * e_in
+!       condensed_region = .true.
+!    else
        atol(1) = 1.d-4 * e_in
+       atol(2) = 1.d-4 * rho_in
        condensed_region = .false.
-    end if
+!    end if
     rtol(1) = 1.d-4
 
 !      if (i_vode .eq. 52 .and. j_vode.eq.52.and. k_vode.eq.30) then
@@ -384,6 +400,7 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out, fn_
                rpar, ipar)
 
     e_out  = y(1)
+    rho_out = y(2)
     T_out  = T_vode
     ne_out = ne_vode
 !    fn_out = iwork(12)

@@ -1,5 +1,5 @@
 
-subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
+subroutine f_rhs(num_eq, time, y_in, yp_out, rpar, ipar)
 
       use amrex_fort_module, only : rt => amrex_real
       use fundamental_constants_module, only: e_to_cgs, density_to_cgs, & 
@@ -13,18 +13,23 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
                                      eh0, ehe0, ehep
 
       use vode_aux_module       , only: z_vode, rho_vode, T_vode, ne_vode, &
-                                        JH_vode, JHe_vode, i_vode, j_vode, k_vode, fn_vode, NR_vode
+                                        JH_vode, JHe_vode, i_vode, j_vode, k_vode, fn_vode, NR_vode, &
+                                        e_src_vode, rho_src_vode
 
       include "g_debug.h"
 
       integer, intent(in)             :: num_eq, ipar
-      real(rt), intent(inout) :: e_in(num_eq)
+      real(rt), intent(inout) :: y_in(num_eq)
       real(rt), intent(in   ) :: time
       real(rt), intent(in   ) :: rpar
-      real(rt), intent(  out) :: energy
+      real(rt), intent(  out) :: yp_out(num_eq)
 
       real(rt), parameter :: compt_c = 1.01765467d-37, T_cmb = 2.725d0
 
+
+      real(rt) :: e_in(1)
+      real(rt) :: energy
+      real(rt) :: rho_in
       real(rt) :: logT, tmp, fhi, flo
       real(rt) :: ahp, ahep, ahepp, ad, geh0, gehe0, gehep
       real(rt) :: bh0, bhe0, bhep, bff1, bff4, rhp, rhep, rhepp
@@ -37,6 +42,9 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
 
       fn_vode=fn_vode+1;
       print_radius = 1
+
+      e_in = y_in(1)
+      rho_vode = y_in(2)
       if ( &!((ABS(i_vode-33) .lt. print_radius  .and. &
            !ABS(j_vode-45).lt.print_radius .and. ABS(k_vode-22).lt.print_radius )) )then
 !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
@@ -146,7 +154,12 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
 
       ! Convert to the actual term to be used in e_out = e_in + dt*energy
       a = 1.d0 / (1.d0 + z_vode)
-      energy = energy / rho_vode / a
+      energy = (energy) / rho_vode / a
+
+
+      yp_out(1) = energy + e_src_vode
+      yp_out(2) = rho_src_vode / a
+
       if ( &!!((ABS(i_vode-33) .lt. print_radius  .and. &
            !!ABS(j_vode-45).lt.print_radius .and. ABS(k_vode-22).lt.print_radius )) .or. &
 !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &

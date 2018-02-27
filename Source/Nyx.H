@@ -381,6 +381,7 @@ public:
     amrex::Real advance_hydro_plus_particles(amrex::Real time, amrex::Real dt, int iteration,
                                       int ncycle);
     void just_the_hydro(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
+    void just_the_hydro_split(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
     void strang_first_step  (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate);
     void strang_second_step (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate);
 
