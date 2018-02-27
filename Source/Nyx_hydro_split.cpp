@@ -67,7 +67,7 @@ Nyx::just_the_hydro_split (Real time,
 
     MultiFab ext_src_old(grids, dmap, NUM_STATE, 3);
     ext_src_old.setVal(0);
-
+    MultiFab::Copy(ext_src_old,D_old,Diag1_comp,Eint,1,0);
 
     // Output source term flag data
     if (add_ext_src && ParallelDescriptor::IOProcessor())
@@ -80,8 +80,10 @@ Nyx::just_the_hydro_split (Real time,
 	 if(sdc_split)
 	   std::cout << "Source terms are handled with sdc splitting" << std::endl; 
 	 else
+	   {
           std::cout << "Source terms are handled with predictor/corrector, not defined here" << std::endl; 
 	  amrex::Abort("Called for predict/correct, using Nyx_hydro_split.cpp");
+	   }
        }
     }
 
@@ -237,10 +239,11 @@ Nyx::just_the_hydro_split (Real time,
 
     // Gives us I^1 from integration with F^(n+1/2) source
     // Stores I^1 in D_new(diag1_comp)
-
-
-    sdc_first_step(time, dt, S_old, D_new, S_new, ext_src_old);
-    MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
+    sdc_first_step(time, dt, S_old_tmp, D_new, ext_src_old);
+    //    MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
+    
+    if(sdc_iter<1)
+      MultiFab::Copy(S_old_tmp,S_old,0,0,S_old.nComp(),0);
 
       }
     //End loop over SDC iterations

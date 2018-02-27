@@ -213,6 +213,8 @@ Nyx::initData ()
             D_new.setVal(0.,   Ne_comp);
             D_new.setVal(0., Sfnr_comp);
             D_new.setVal(0., Ssnr_comp);
+            D_new.setVal(0., Diag1_comp);
+            D_new.setVal(0., Diag2_comp);
 
             for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
             {

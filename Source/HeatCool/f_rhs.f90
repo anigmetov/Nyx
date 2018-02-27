@@ -157,7 +157,7 @@ subroutine f_rhs(num_eq, time, y_in, yp_out, rpar, ipar)
       energy = (energy) / rho_vode / a
 
 
-      yp_out(1) = energy + e_src_vode
+      yp_out(1) = 0.d0*energy + e_src_vode / (a*a)
       yp_out(2) = rho_src_vode / a
 
       if ( &!!((ABS(i_vode-33) .lt. print_radius  .and. &

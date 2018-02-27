@@ -81,6 +81,7 @@ subroutine integrate_state_vode(lo, hi, &
 !       STRANG_COMP=SFNR_COMP
 !    else
        STRANG_COMP=SFNR_COMP+s_comp
+       if(s_comp .ge. 10) STRANG_COMP = SFNR_COMP +s_comp-10
 !    end if
 
     ! more robustly as an if statement:

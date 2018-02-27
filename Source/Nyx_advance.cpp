@@ -278,12 +278,22 @@ Nyx::advance_hydro_plus_particles (Real time,
     //
     // Call the hydro advance at each level to be advanced
     //
-    BL_PROFILE_VAR("just_the_hydro_split", just_the_hydro);
+    if(sdc_split)
+      {    BL_PROFILE_VAR("just_the_hydro_split", just_the_hydro);
+    for (int lev = level; lev <= finest_level_to_advance; lev++)
+    {
+        get_level(lev).just_the_hydro_split(time, dt, a_old, a_new);
+    }
+    BL_PROFILE_VAR_STOP(just_the_hydro);}
+    else
+      {
+    BL_PROFILE_VAR("just_the_hydro", just_the_hydro);
     for (int lev = level; lev <= finest_level_to_advance; lev++)
     {
         get_level(lev).just_the_hydro_split(time, dt, a_old, a_new);
     }
     BL_PROFILE_VAR_STOP(just_the_hydro);
+      }
 
     //
     // We must reflux before doing the next gravity solve
