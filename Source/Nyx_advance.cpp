@@ -290,7 +290,7 @@ Nyx::advance_hydro_plus_particles (Real time,
     BL_PROFILE_VAR("just_the_hydro", just_the_hydro);
     for (int lev = level; lev <= finest_level_to_advance; lev++)
     {
-        get_level(lev).just_the_hydro_split(time, dt, a_old, a_new);
+        get_level(lev).just_the_hydro(time, dt, a_old, a_new);
     }
     BL_PROFILE_VAR_STOP(just_the_hydro);
       }

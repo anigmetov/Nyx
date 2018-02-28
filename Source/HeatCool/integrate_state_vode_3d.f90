@@ -42,7 +42,7 @@ subroutine integrate_state_vode(lo, hi, &
     use comoving_module, only: comoving_h, comoving_OmB
     use comoving_nd_module, only: fort_integrate_comoving_a
     use atomic_rates_module, only: YHELIUM
-    use vode_aux_module    , only: JH_vode, JHe_vode, z_vode, i_vode, j_vode, k_vode
+    use vode_aux_module    , only: JH_vode, JHe_vode, z_vode, i_vode, j_vode, k_vode, rho_init_vode
     use reion_aux_module   , only: zhi_flash, zheii_flash, flash_h, flash_he, &
                                    T_zhi, T_zheii, inhomogeneous_on
 
@@ -134,6 +134,7 @@ subroutine integrate_state_vode(lo, hi, &
                 e_orig  = state(i,j,k,UEINT) / rho
                 T_orig  = diag_eos(i,j,k,TEMP_COMP)
                 ne_orig = diag_eos(i,j,k,  NE_COMP)
+                rho_init_vode = rho
                 rho_src = src(i,j,k,URHO)
                 rhoe_src = src(i,j,k,UEINT)
                 e_src   = src(i,j,k,UMX)
@@ -158,8 +159,8 @@ subroutine integrate_state_vode(lo, hi, &
                 j_vode = j
                 k_vode = k
           print_radius = 1
-      if ( ((ABS(i_vode-58) .lt. print_radius  .and. &
-           ABS(j_vode-42).lt.print_radius .and. ABS(k_vode-52).lt.print_radius ))  &
+      if ( ((ABS(i_vode-50) .lt. print_radius  .and. &
+           ABS(j_vode-15).lt.print_radius .and. ABS(k_vode-65).lt.print_radius ))  &
 !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
 !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
           .and. .not. ((ABS(i_vode-28) .lt. print_radius  .and. &
@@ -207,6 +208,12 @@ end if
                    e_out  = T_out / (gamma_minus_1 * mp_over_kB * mu)
                    call nyx_eos_T_given_Re(JH_vode, JHe_vode, T_out, ne_out, rho, e_out, a, species)
                 endif
+
+
+                print*, "rho_in = ",rho
+                print*, "e_in = ",e_orig
+                print*, "rho_out = ",rho_out
+                print*, "e_out = ",e_out
 
                 ! Update (rho e) and (rho E)
                 state(i,j,k,URHO) = rho_out
