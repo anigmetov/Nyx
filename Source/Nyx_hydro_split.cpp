@@ -94,7 +94,6 @@ Nyx::just_the_hydro_split (Real time,
 #ifdef GRAVITY
     gravity->get_old_grav_vector(level, grav_vector, time);
     grav_vector.FillBoundary(geom.periodicity());
-    std::cout << "GRAV VECTOR NBOXES " << grav_vector.boxArray() << std::endl;
 #endif
 
     MultiFab fluxes[BL_SPACEDIM];
