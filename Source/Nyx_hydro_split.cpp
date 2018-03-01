@@ -170,8 +170,6 @@ Nyx::just_the_hydro_split (Real time,
   	    // Get F^(n+1/2)
     	    // Possibly unsafe if .5*dt+.5*dt~=dt
 
-            std::cout << "MFI " << mfi.index() << std::endl;
-
 	fort_advance_gas
             (&time, bx.loVect(), bx.hiVect(), 
              BL_TO_FORTRAN(S_state),
@@ -209,6 +207,7 @@ Nyx::just_the_hydro_split (Real time,
 
        // Writes over old extra output variables with new extra output variables
 	 MultiFab::Copy(D_new,D_old_tmp,Sfnr_comp,Sfnr_comp,4,0);
+
 	 /* Leave/use if getting data from HydroFortran
 	 MultiFab::Copy(D_new,ext_src_old,0,Diag2_comp,1,0);
 	 */
