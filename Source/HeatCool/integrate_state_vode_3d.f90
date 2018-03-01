@@ -174,7 +174,7 @@ subroutine integrate_state_vode(lo, hi, &
                         rho_out, T_out ,ne_out ,e_out, fn_out, rho_src, e_src)
                 else
                    call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
-                        rho_out, T_out ,ne_out ,e_out, fn_out)
+                        T_out ,ne_out ,e_out, fn_out)
                 end if
 
                 if (e_out .lt. 0.d0) then
@@ -335,7 +335,7 @@ subroutine vode_wrapper_split(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_
     integer          :: print_radius
     CHARACTER(LEN=80) :: FMT
 
-    EXTERNAL jac, f_rhs
+    EXTERNAL jac, f_rhs, f_rhs_split
     
     logical, save :: firstCall = .true.
 
