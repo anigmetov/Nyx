@@ -150,8 +150,8 @@ subroutine integrate_state_vode(lo, hi, &
 
                 if (e_orig .lt. 0.d0) then
                     !$OMP CRITICAL
-                    print *,'negative e entering strang integration ', z, i,j,k, rho/mean_rhob, e_orig
-                    call bl_abort('bad e in strang')
+                    print *,'negative e entering VODE integration ', z, i,j,k, rho/mean_rhob, e_orig
+                    call bl_abort('bad e in VODE')
                     !$OMP END CRITICAL
                 end if
 
@@ -179,14 +179,15 @@ subroutine integrate_state_vode(lo, hi, &
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
-                    print *,'negative e exiting strang integration ', z, i,j,k, rho/mean_rhob, e_out
+                    print *,'negative e exiting VODE integration ', z, i,j,k, rho/mean_rhob, e_out
                     call flush(6)
                     !$OMP END CRITICAL
                     T_out  = 10.0
                     ne_out = 0.0
                     mu     = (1.0d0+4.0d0*YHELIUM) / (1.0d0+YHELIUM+ne_out)
                     e_out  = T_out / (gamma_minus_1 * mp_over_kB * mu)
-                    !call bl_abort('bad e out of strang')
+                    !call bl_abort('bad e out of VODE')
+                    stop
                 end if
 
                 ! Update T and ne (do not use stuff computed in f_rhs, per vode manual)
@@ -213,10 +214,10 @@ subroutine integrate_state_vode(lo, hi, &
                 endif
 
 
-                print*, "rho_in = ",rho
-                print*, "e_in = ",e_orig
-                print*, "rho_out = ",rho_out
-                print*, "e_out = ",e_out
+!               print*, "rho_in = ",rho
+!               print*, "e_in = ",e_orig
+!               print*, "rho_out = ",rho_out
+!               print*, "e_out = ",e_out
 
                 ! Update (rho e) and (rho E)
                 state(i,j,k,URHO) = rho_out
@@ -253,8 +254,6 @@ subroutine integrate_state_vode(lo, hi, &
 
 end subroutine integrate_state_vode
 
-
-
 subroutine vode_wrapper_split(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_out, e_out, fn_out, rho_src, e_src)
 
     use amrex_fort_module, only : rt => amrex_real
@@ -274,7 +273,7 @@ subroutine vode_wrapper_split(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_
     real(rt), intent(in   ) :: rho_in,  T_in, ne_in, e_in
     real(rt), intent(  out) :: rho_out, T_out,ne_out,e_out
     integer,  intent(  out) ::         fn_out
-    integer,  intent(in   ) ::         rho_src, e_src
+    real(rt),  intent(in   ) ::         rho_src, e_src
 
     real(rt) mean_rhob
 
@@ -393,12 +392,12 @@ subroutine vode_wrapper_split(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_
 !           ((i_vode .eq. 94 .and. j_vode.eq.112.and. k_vode.eq.40) ) ) then
 !         print *, 'at i=',i_vode,'j=',j_vode,'k=',k_vode, 'fn_vode='fn_vode, 'NR_vode=', NR_vode        
            print *, 'Entering dvode'
-      FMT = "(A6,\,I4,\, ES15.5,\, ES15.5E3,\, ES15.5,\, ES15.5)"
-      if(g_debug.eq.0) then
-         print(FMT), 'NJis1:',STRANG_COMP,e_in,e_out,T_in, T_out
-      else
-         print(FMT), 'YJis1:',STRANG_COMP,e_in,e_out,T_in, T_out
-      end if
+!     FMT = "(A6,\,I4,\, ES15.5,\, ES15.5E3,\, ES15.5,\, ES15.5)"
+!     if(g_debug.eq.0) then
+!        print(FMT), 'NJis1:',STRANG_COMP,e_in,e_out,T_in, T_out
+!     else
+!        print(FMT), 'YJis1:',STRANG_COMP,e_in,e_out,T_in, T_out
+!     end if
 !           print *, 'rho_in1= ', rho_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
 !           print *, 'e_in1= ', e_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
 !           print *, 'T_in1= ', T_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
@@ -480,7 +479,7 @@ subroutine vode_wrapper_split(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_
 
 end subroutine vode_wrapper_split
 
-subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out)
+subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out, fn_out)
 
     use amrex_fort_module, only : rt => amrex_real
     use vode_aux_module, only: rho_vode, T_vode, ne_vode, &
@@ -491,6 +490,8 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out)
     real(rt), intent(in   ) :: dt
     real(rt), intent(in   ) :: rho_in, T_in, ne_in, e_in
     real(rt), intent(  out) ::         T_out,ne_out,e_out
+
+    integer,  intent(  out) ::         fn_out
 
     ! Set the number of independent variables -- this should be just "e"
     integer, parameter :: NEQ = 1

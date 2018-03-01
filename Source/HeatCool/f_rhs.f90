@@ -160,8 +160,8 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
       yp_out(1) = energy + e_src_vode * a
       yp_out(2) = rho_src_vode 
 
-      FMT = "(A6, I4, ES15.5, ES15.5E3, ES15.5, ES15.5, ES15.5, ES15.5)"
-      print(FMT), 'fypsrc:',fn_vode,yp_out(1),yp_out(2),rho_src_vode,e_src_vode, a, time
+!     FMT = "(A6, I4, ES15.5, ES15.5E3, ES15.5, ES15.5, ES15.5, ES15.5)"
+!     print(FMT), 'fypsrc:',fn_vode,yp_out(1),yp_out(2),rho_src_vode,e_src_vode, a, time
 
       if ( &!!((ABS(i_vode-33) .lt. print_radius  .and. &
            !!ABS(j_vode-45).lt.print_radius .and. ABS(k_vode-22).lt.print_radius )) .or. &
