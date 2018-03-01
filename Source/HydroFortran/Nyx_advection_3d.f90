@@ -919,7 +919,7 @@
       integer          :: n, nq
       integer          :: iadv, ispec
       real(rt) :: courx, coury, courz, courmx, courmy, courmz
-      real(rt) :: a_half, a_dot, rhoInv, x
+      real(rt) :: a_half, a_dot, rhoInv
       real(rt) :: dtdxaold, dtdyaold, dtdzaold, small_pres_over_dens
 
       do i=1,3
@@ -980,12 +980,6 @@
                do j = loq(2),hiq(2)
                   do i = loq(1),hiq(1)
                      q(i,j,k,nq) = uin(i,j,k,n)/q(i,j,k,QRHO)
-                     if (uin(i,j,k,n)/uin(i,j,k,URHO) .lt. 1.d-2) then
-                        print*, "small input species", uin(i,j,k,n)
-                        x = uin(i,j,k,n)/uin(i,j,k,URHO)
-                        print*, "small input species/rho", x
-                        print*, "resulting q input", q(i,j,k,nq)
-                     end if
                   enddo
                enddo
             enddo
@@ -1342,13 +1336,13 @@
          enddo
       enddo
 
-      if(sdc_split) then
+      if (sdc_split .gt. 0) then
          do n = 1, NVAR
 
             ! update everything else with fluxes and source terms
-            do k = src_l3,src_h3
-               do j = src_l2,src_h2
-                  do i = src_l1,src_h1
+            do k = lo(3),hi(3)
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)
 
                      ! A_Density
                      if (n .eq. URHO) then

@@ -94,6 +94,7 @@ Nyx::just_the_hydro_split (Real time,
 #ifdef GRAVITY
     gravity->get_old_grav_vector(level, grav_vector, time);
     grav_vector.FillBoundary(geom.periodicity());
+    std::cout << "GRAV VECTOR NBOXES " << grav_vector.boxArray() << std::endl;
 #endif
 
     MultiFab fluxes[BL_SPACEDIM];
@@ -118,60 +119,63 @@ Nyx::just_the_hydro_split (Real time,
 
     //Begin loop over SDC iterations
 
-    for(sdc_iter = 0; sdc_iter < 2; sdc_iter++)
-      {
-    //Construct advective terms using I_R from the last timestep as source
-    //////////////////Add back in
+    FArrayBox flux[BL_SPACEDIM], u_gdnv[BL_SPACEDIM];
+
+    for (sdc_iter = 0; sdc_iter < 2; sdc_iter++)
+    {
+       std::cout << "STARTING SDC_ITER LOOP " << sdc_iter << std::endl;
+
+       //Construct advective terms using I_R from the last timestep as source
+       //////////////////Add back in
 
 	/*
-    // Gives us I^0 from integration, will add using previous I later
-    // Stores I^0 in D_old_tmp(diag_comp)
-    if (add_ext_src && sdc_split)
-      {
-      sdc_zeroth_step(time,dt,S_old_tmp,D_old_tmp, ext_src_old);
-      MultiFab::Copy(ext_src_old,D_old_tmp,Diag1_comp,Eint,1,0);
-      }
+       // Gives us I^0 from integration, will add using previous I later
+       // Stores I^0 in D_old_tmp(diag_comp)
+       if (add_ext_src && sdc_split)
+         {
+         sdc_zeroth_step(time,dt,S_old_tmp,D_old_tmp, ext_src_old);
+         MultiFab::Copy(ext_src_old,D_old_tmp,Diag1_comp,Eint,1,0);
+         }
 	*/
 
-    // OPENMP loop over fort_advance_gas "advection"
+       // OPENMP loop over fort_advance_gas "advection"
 #ifdef _OPENMP
 #pragma omp parallel reduction(max:courno) reduction(+:e_added,ke_added)
 #endif
-       {
-       FArrayBox flux[BL_SPACEDIM], u_gdnv[BL_SPACEDIM];
-       Real cflLoc = -1.e+200;
+          {
+          Real cflLoc = -1.e+200;
 
-       for (MFIter mfi(S_old_tmp,true); mfi.isValid(); ++mfi)
-       {
+          for (MFIter mfi(S_old_tmp,true); mfi.isValid(); ++mfi)
+          {
+             const Box& bx        = mfi.tilebox();
 
-        const Box& bx        = mfi.tilebox();
+             // Allocate fabs for fluxes.
+             for (int i = 0; i < BL_SPACEDIM ; i++) {
+                 const Box &bxtmp = amrex::surroundingNodes(bx, i);
+                 flux[i].resize(bxtmp, NUM_STATE);
+                 u_gdnv[i].resize(amrex::grow(bxtmp, 1), 1);
+                 u_gdnv[i].setVal(1.e200);
+             }
 
-        FArrayBox& state     = S_old_tmp[mfi];
-        FArrayBox& dstate    = D_old_tmp[mfi];
-        FArrayBox& stateout  = S_new[mfi];
+             FArrayBox& S_state    = S_old_tmp[mfi];
+             FArrayBox& S_stateout = S_new[mfi];
 
 #ifdef SHEAR_IMPROVED
-        FArrayBox& am_tmp = AveMom_tmp[mfi];
+             FArrayBox& am_tmp = AveMom_tmp[mfi];
 #endif
 
-        Real se  = 0;
-        Real ske = 0;
+             Real se  = 0;
+             Real ske = 0;
 
-        // Allocate fabs for fluxes.
-        for (int i = 0; i < BL_SPACEDIM ; i++) {
-            const Box &bxtmp = amrex::surroundingNodes(bx, i);
-            flux[i].resize(bxtmp, NUM_STATE);
-            u_gdnv[i].resize(amrex::grow(bxtmp, 1), 1);
-            u_gdnv[i].setVal(1.e200);
-        }
+  	    // Get F^(n+1/2)
+    	    // Possibly unsafe if .5*dt+.5*dt~=dt
 
-	// Get F^(n+1/2)
-	// Possibly unsafe if .5*dt+.5*dt~=dt
+            std::cout << "MFI " << mfi.index() << std::endl;
 
 	fort_advance_gas
             (&time, bx.loVect(), bx.hiVect(), 
-             BL_TO_FORTRAN(state),
-             BL_TO_FORTRAN(stateout),
+             BL_TO_FORTRAN(S_state),
+             BL_TO_FORTRAN(S_stateout),
              BL_TO_FORTRAN(u_gdnv[0]),
              BL_TO_FORTRAN(u_gdnv[1]),
              BL_TO_FORTRAN(u_gdnv[2]),
@@ -203,26 +207,39 @@ Nyx::just_the_hydro_split (Real time,
        //    as guesses when we next need them.
        MultiFab::Copy(D_new,D_old,0,0,D_old.nComp()-2,0);
 
-
        // Writes over old extra output variables with new extra output variables
 	 MultiFab::Copy(D_new,D_old_tmp,Sfnr_comp,Sfnr_comp,4,0);
 	 /* Leave/use if getting data from HydroFortran
 	 MultiFab::Copy(D_new,ext_src_old,0,Diag2_comp,1,0);
 	 */
 
-       // Fluxes
-       if (do_reflux) {
-         if (current) {
-           for (int i = 0; i < BL_SPACEDIM ; i++) {
+         // Gives us I^1 from integration with F^(n+1/2) source
+         // Stores I^1 in D_new(diag1_comp)
+
+         sdc_first_step(time, dt, S_old_tmp, D_new, ext_src_old);
+
+         //    MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
+    
+        if (sdc_iter < 1)
+          MultiFab::Copy(S_old_tmp,S_old,0,0,S_old.nComp(),0);
+
+    }
+    //End loop over SDC iterations
+
+    // Fluxes
+    if (do_reflux) {
+         if (current) 
+         {
+           for (int i = 0; i < BL_SPACEDIM ; i++) 
              current->FineAdd(fluxes[i], i, 0, 0, NUM_STATE, 1);
-           }
          }
-         if (fine) {
+         if (fine) 
+         {
            for (int i = 0; i < BL_SPACEDIM ; i++) {
 	         fine->CrseInit(fluxes[i],i,0,0,NUM_STATE,-1.,FluxRegister::ADD);
-           }
          }
-       }
+      }
+    }
 
     grav_vector.clear();
 
@@ -236,18 +253,6 @@ Nyx::just_the_hydro_split (Real time,
 
         amrex::Abort("CFL is too high at this level -- go back to a checkpoint and restart with lower cfl number");
     }
-
-    // Gives us I^1 from integration with F^(n+1/2) source
-    // Stores I^1 in D_new(diag1_comp)
-    sdc_first_step(time, dt, S_old_tmp, D_new, ext_src_old);
-    //    MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
-    
-    if(sdc_iter<1)
-      MultiFab::Copy(S_old_tmp,S_old,0,0,S_old.nComp(),0);
-
-      }
-    //End loop over SDC iterations
-
 
 }
 #endif

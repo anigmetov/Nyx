@@ -173,7 +173,6 @@ Nyx::just_the_hydro (Real time,
         const Box& bx        = mfi.tilebox();
 
         FArrayBox& state     = S_old_tmp[mfi];
-        FArrayBox& dstate    = D_old_tmp[mfi];
         FArrayBox& stateout  = S_new[mfi];
 
 #ifdef SHEAR_IMPROVED

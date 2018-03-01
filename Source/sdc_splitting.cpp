@@ -77,8 +77,8 @@ Nyx::sdc_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, Multi
     //    D_old.setVal(-2,Ssnr_comp);
     for (MFIter mfi(S_old,true); mfi.isValid(); ++mfi)
     {
-        // Note that this "bx" includes the grow cells 
-        const Box& bx = mfi.growntilebox(S_old.nGrow());
+        // Note that this "bx" is only the valid region (unlike for Strang)
+        const Box& bx = mfi.tilebox();
 
         int  min_iter = 100000;
         int  max_iter =      0;
