@@ -219,6 +219,8 @@ subroutine integrate_state_vode(lo, hi, &
 !               print*, "rho_out = ",rho_out
 !               print*, "e_out = ",e_out
 
+
+                if(s_comp .ge. 10) then
                 ! Update (rho e) and (rho E)
                 state(i,j,k,URHO) = rho_out
                 diag_eos(i,j,k, DIAG2_COMP) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
@@ -249,6 +251,29 @@ subroutine integrate_state_vode(lo, hi, &
 !                   diag_eos(i,j,k, DIAG1_COMP) = a * (e_out-e_orig)/half_dt
 !                endif
 
+                else
+
+                ! Update (rho e) and (rho E)
+                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho * (e_out-e_orig)
+                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + rho * (e_out-e_orig)
+
+                ! Update T and ne
+                diag_eos(i,j,k,TEMP_COMP) = T_out
+                diag_eos(i,j,k,  NE_COMP) = ne_out
+!                diag_eos(i,j,k, TMP_COMP) = i*10000+j*100+k
+
+!                diag_eos(i,j,k, STRANG_COMP) = fn_out
+!                if(track_diag_energy) then
+!                   diag_eos(i,j,k, STRANG_COMP) = e_out-e_orig
+!               else
+                   diag_eos(i,j,k, STRANG_COMP) = fn_out
+                   !half_dt is half of larger dt
+                   ! mimics ext_src_hc source term
+                   diag_eos(i,j,k, DIAG1_COMP) = a * (e_out-e_orig)/half_dt
+                   diag_eos(i,j,k, DIAG2_COMP) = a
+!                endif
+
+                end if
 
             end do ! i
         end do ! j

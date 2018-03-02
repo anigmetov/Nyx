@@ -1337,6 +1337,7 @@
       enddo
 
       if (sdc_split .gt. 0) then
+         print*,'creating src terms in consup'
          do n = 1, NVAR
 
             ! update everything else with fluxes and source terms
