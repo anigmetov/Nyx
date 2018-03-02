@@ -67,6 +67,8 @@ Nyx::just_the_hydro_split (Real time,
 
     MultiFab ext_src_old(grids, dmap, NUM_STATE, 3);
     ext_src_old.setVal(0);
+
+    //Use previous I_R
     MultiFab::Copy(ext_src_old,D_old,Diag1_comp,Eint,1,0);
 
     // Output source term flag data

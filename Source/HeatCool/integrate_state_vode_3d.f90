@@ -81,7 +81,7 @@ subroutine integrate_state_vode(lo, hi, &
 !       STRANG_COMP=SFNR_COMP
 !    else
        STRANG_COMP=SFNR_COMP+s_comp
-       if(s_comp .ge. 10) STRANG_COMP = SFNR_COMP +s_comp-10
+       if(s_comp .ge. 10) STRANG_COMP = SFNR_COMP +s_comp-11
 !    end if
 
     ! more robustly as an if statement:
@@ -241,7 +241,9 @@ subroutine integrate_state_vode(lo, hi, &
 !                if(track_diag_energy) then
 !                   diag_eos(i,j,k, STRANG_COMP) = e_out-e_orig
 !               else
-                   diag_eos(i,j,k, STRANG_COMP) = fn_out
+!                print*, STRANG_COMP
+!                print*, s_comp
+                diag_eos(i,j,k, STRANG_COMP) = fn_out
                    !half_dt is half of larger dt
                    ! mimics ext_src_hc source term
 !                   diag_eos(i,j,k, DIAG1_COMP) = a * (e_out-e_orig)/half_dt

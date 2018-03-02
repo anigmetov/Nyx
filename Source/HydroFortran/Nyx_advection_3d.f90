@@ -1360,7 +1360,7 @@
                              +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
                              +   flux3(i,j,k,n) - flux3(i,j,k+1,n)) * volinv !&
 !                             +   dt * src(i,j,k,n)
-                        uout(i,j,k,n) = uout(i,j,k,n) * a_new_inv
+                        src(i,j,k,n) = src(i,j,k,n) * a_new_inv
 
                         ! (A_rho E)
                      else if (n .eq. UEDEN) then
@@ -1370,7 +1370,7 @@
                              +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * a_half * volinv !&
 !                             +   a_half * dt * src(i,j,k,n)  &
 !                             +   a_half * (a_new - a_old) * ( TWO - THREE * gamma_minus_1) * uin(i,j,k,UEINT)
-                        uout(i,j,k,n) = uout(i,j,k,n) * a_newsq_inv
+                        src(i,j,k,n) = src(i,j,k,n) * a_newsq_inv
 
                         ! (dt A_rho e)
                      else if (n .eq. UEINT) then
