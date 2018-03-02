@@ -1388,7 +1388,7 @@
 !                             +   a_half * dt * src(i,j,k,n) &
                              -   a_oldsq*uin(i,j,k,n)
 
-                        uout(i,j,k,n) = uout(i,j,k,n) * a_newsq_inv + dt * src(i,j,k,UEDEN)
+                        src(i,j,k,n) = src(i,j,k,n) * a_newsq_inv + dt * src(i,j,k,UEDEN)
 
                         !! Store dtA_e in UMX
                         src(i,j,k,UMX) = (uin(i,j,k,UEINT) * a_oldsq + dt * src(i,j,k,UEINT) *a_newsq) &

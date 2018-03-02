@@ -68,9 +68,19 @@ Nyx::just_the_hydro_split (Real time,
     MultiFab ext_src_old(grids, dmap, NUM_STATE, 3);
     ext_src_old.setVal(0);
 
-    //Use previous I_R
+    //Use previous I_R, ignore growth cells
     MultiFab::Copy(ext_src_old,D_old,Diag1_comp,Eint,1,0);
 
+    /*
+    // Gives us I^0 from integration, will add using previous I later
+    // Stores I^0 in D_old_tmp(diag_comp)
+    if (add_ext_src && sdc_split)
+    {
+    sdc_zeroth_step(time,dt,S_old_tmp,D_old_tmp, ext_src_old);
+    MultiFab::Copy(ext_src_old,D_old_tmp,Diag1_comp,Eint,1,0);
+    }
+    */
+    
     // Output source term flag data
     if (add_ext_src && ParallelDescriptor::IOProcessor())
     {
@@ -127,17 +137,8 @@ Nyx::just_the_hydro_split (Real time,
        std::cout << "STARTING SDC_ITER LOOP " << sdc_iter << std::endl;
 
        //Construct advective terms using I_R from the last timestep as source
-       //////////////////Add back in
 
-	/*
-       // Gives us I^0 from integration, will add using previous I later
-       // Stores I^0 in D_old_tmp(diag_comp)
-       if (add_ext_src && sdc_split)
-         {
-         sdc_zeroth_step(time,dt,S_old_tmp,D_old_tmp, ext_src_old);
-         MultiFab::Copy(ext_src_old,D_old_tmp,Diag1_comp,Eint,1,0);
-         }
-	*/
+       //Done above with Copy, or at the end of the loop inside iterate by updating src
 
        // OPENMP loop over fort_advance_gas "advection"
 #ifdef _OPENMP
@@ -204,22 +205,23 @@ Nyx::just_the_hydro_split (Real time,
 
        // We copy old Temp and Ne to new Temp and Ne so that they can be used
        //    as guesses when we next need them.
+       // Possible this should be D_old.nComp()-4 instead, but the next copy overwrites anyways
        MultiFab::Copy(D_new,D_old,0,0,D_old.nComp()-2,0);
 
        // Writes over old extra output variables with new extra output variables
-	 MultiFab::Copy(D_new,D_old_tmp,Sfnr_comp,Sfnr_comp,4,0);
-
-	 /* Leave/use if getting data from HydroFortran
-	 MultiFab::Copy(D_new,ext_src_old,0,Diag2_comp,1,0);
-	 */
+       MultiFab::Copy(D_new,D_old_tmp,Sfnr_comp,Sfnr_comp,4,0);
 
          // Gives us I^1 from integration with F^(n+1/2) source
-         // Stores I^1 in D_new(diag1_comp)
+         // Stores I^1 in D_new(diag1_comp) and ext_src_old(UEINT)
 
          sdc_first_step(time, dt, S_old_tmp, D_new, ext_src_old);
 
+	 // Consider changing to a copy operation
+	 // I_R is stored in two places, but we need it in diag_eos for the next timestep
          //    MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
     
+	 //If another sdc iteration is performed, use the old state data
+	 // This could be more general (sdc_iter< sdc_iter_max-1)
         if (sdc_iter < 1)
           MultiFab::Copy(S_old_tmp,S_old,0,0,S_old.nComp(),0);
 

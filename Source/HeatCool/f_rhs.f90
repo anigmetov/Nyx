@@ -157,7 +157,7 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
       a = 1.d0 / (1.d0 + z_vode)
       energy = (energy) / rho_vode / a
 
-      yp_out(1) = energy + e_src_vode * a
+      yp_out(1) = 0.d0*energy + e_src_vode * a
       yp_out(2) = rho_src_vode 
 
 !     FMT = "(A6, I4, ES15.5, ES15.5E3, ES15.5, ES15.5, ES15.5, ES15.5)"
@@ -327,7 +327,7 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
 
       ! Convert to the actual term to be used in e_out = e_in + dt*energy
       a = 1.d0 / (1.d0 + z_vode)
-      energy = energy / rho_vode / a
+      energy = 0.d0 * energy / rho_vode / a
       if ( &!!((ABS(i_vode-33) .lt. print_radius  .and. &
            !!ABS(j_vode-45).lt.print_radius .and. ABS(k_vode-22).lt.print_radius )) .or. &
 !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
