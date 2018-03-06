@@ -69,7 +69,10 @@ Nyx::just_the_hydro_split (Real time,
     ext_src_old.setVal(0);
 
     //Use previous I_R, ignore growth cells
+    // TREATING I_R as zero
     MultiFab::Copy(ext_src_old,D_old,Diag1_comp,Eint,1,0);
+    
+
 
     /*
     // Gives us I^0 from integration, will add using previous I later

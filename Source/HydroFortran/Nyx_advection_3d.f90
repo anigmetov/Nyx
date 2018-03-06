@@ -1354,6 +1354,9 @@
 !                             +   dt * src(i,j,k,n)
                              ) * a_half_inv
 
+                        ! Reset URHO so that we can integrate in integrate_state
+!                        uout(i,j,k,n) = uin(i,j,k,n)
+
                         !A_Momentum
                      else if (n .ge. UMX .and. n .le. UMZ) then
                         src(i,j,k,n) = &

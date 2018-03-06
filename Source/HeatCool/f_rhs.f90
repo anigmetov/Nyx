@@ -114,6 +114,8 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
 !       print *, 'rho_heat = ', rho_heat, 'at (i,j,k) ',i_vode,j_vode,k_vode
        print *, 'rho = ', rho_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
       end if
+         yp_out(1) = 0.d0*energy + e_src_vode*a
+         yp_out(2) = rho_src_vode
          return
       end if
 
@@ -158,7 +160,7 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
       energy = (energy) / rho_vode / a
 
       yp_out(1) = 0.d0*energy + e_src_vode * a
-      yp_out(2) = rho_src_vode 
+      yp_out(2) = rho_src_vode
 
 !     FMT = "(A6, I4, ES15.5, ES15.5E3, ES15.5, ES15.5, ES15.5, ES15.5)"
 !     print(FMT), 'fypsrc:',fn_vode,yp_out(1),yp_out(2),rho_src_vode,e_src_vode, a, time
@@ -175,6 +177,9 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
        print *, 'energy = ', energy, 'at (i,j,k) ',i_vode,j_vode,k_vode
 !       print *, 'rho_heat = ', rho_heat, 'at (i,j,k) ',i_vode,j_vode,k_vode
        print *, 'rho_vd = ', rho_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
+       print *, 'rho_sr = ', rho_src_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
+      FMT = "(A6, I4, ES21.14,  ES21.14)"
+      print(FMT), 'rhovd:',fn_vode,time, rho_vode
       end if
 
 end subroutine f_rhs_split
@@ -340,6 +345,8 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
        print *, 'energy = ', energy, 'at (i,j,k) ',i_vode,j_vode,k_vode
 !       print *, 'rho_heat = ', rho_heat, 'at (i,j,k) ',i_vode,j_vode,k_vode
        print *, 'rho_vd = ', rho_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
+      FMT = "(A6, I4, ES21.14,  ES21.14)"
+      print(FMT), 'rhovd:',fn_vode,time, rho_vode
       end if
 
 end subroutine f_rhs

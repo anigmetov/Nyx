@@ -114,6 +114,12 @@ subroutine integrate_state_vode(lo, hi, &
     if (flash_h ) H_reion_z  = zhi_flash
     if (flash_he) He_reion_z = zheii_flash
 
+
+    if(s_comp .ge.10)    print*, "rho~:", state(29,21,25,URHO)+half_dt*src(i,j,k,URHO)
+
+    print*,"lower bounds",lo
+    print*,"higher bounds",hi
+
     ! Note that (lo,hi) define the region of the box containing the grow cells
     ! Do *not* assume this is just the valid region
     ! apply heating-cooling to UEDEN and UEINT
@@ -136,7 +142,7 @@ subroutine integrate_state_vode(lo, hi, &
                 ne_orig = diag_eos(i,j,k,  NE_COMP)
                 rho_init_vode = rho
                 rho_src = src(i,j,k,URHO)
-                rhoe_src = src(i,j,k,UEINT)
+                rhoe_src = src(i,j,k,UEINT) 
                 e_src   = src(i,j,k,UMX)
 
                 if (inhomogeneous_on) then
@@ -176,6 +182,7 @@ subroutine integrate_state_vode(lo, hi, &
                    call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
                         T_out ,ne_out ,e_out, fn_out)
                 end if
+
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
@@ -223,12 +230,14 @@ subroutine integrate_state_vode(lo, hi, &
                 if(s_comp .ge. 10) then
                 ! Update (rho e) and (rho E)
                 state(i,j,k,URHO) = rho_out
+!                state(i,j,k,URHO) = rho + rho_src_
                 diag_eos(i,j,k, DIAG2_COMP) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
 !                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
                 state(i,j,k,UEINT) = rho_out * e_out
 
                 ! Store I_R
-                diag_eos(i,j,k, DIAG1_COMP) = a_end* rho_out *e_out-(a*rho* e_orig + a_end*a_end*half_dt*src(i,j,k,UEINT))
+                diag_eos(i,j,k, DIAG1_COMP) = a_end* rho_out *e_out-&
+                     (a*rho* e_orig + a_end*a_end*half_dt*src(i,j,k,UEINT))
                 src(i,j,k,UEINT) = diag_eos(i,j,k,DIAG1_COMP)
                 
                 ! Use I_R to update rhoE
@@ -272,12 +281,13 @@ subroutine integrate_state_vode(lo, hi, &
                    diag_eos(i,j,k, DIAG1_COMP) = a * (e_out-e_orig)/half_dt
                    diag_eos(i,j,k, DIAG2_COMP) = a
 !                endif
-
                 end if
 
             end do ! i
         end do ! j
     end do ! k
+
+    if(s_comp .ge. 10) print*, "rho_out:", state(29,21,25,URHO)
 
 end subroutine integrate_state_vode
 
@@ -429,6 +439,7 @@ subroutine vode_wrapper_split(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_
 !           print *, 'e_in1= ', e_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
 !           print *, 'T_in1= ', T_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
  end if
+       print *, 'someone entered dvode in split'
     
     !calling dvode
     g_debug = 0
@@ -471,6 +482,7 @@ subroutine vode_wrapper_split(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_
 !       print *, 'T_ot = ', T_out, 'at (i,j,k) ',i_vode,j_vode,k_vode
 !       print *, 'atol = ', atol(1), 'at (i,j,k) ',i_vode,j_vode,k_vode
       end if
+       print *, 'someone exited dvode in split'
 
 !      if (i_vode .eq. 52 .and. j_vode.eq.52.and. k_vode.eq.30) then
 !         print *, 'Newton-Rhaphson iterations per vode call=', NR_vode
