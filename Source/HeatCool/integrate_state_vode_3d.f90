@@ -222,7 +222,8 @@ subroutine integrate_state_vode(lo, hi, &
                    call nyx_eos_T_given_Re(JH_vode, JHe_vode, T_out, ne_out, rho, e_out, a, species)
                 endif
 
-
+                ! putting this here as well as immediately after the wrapper calls seems to have no effect
+                e_out = e_orig
 !               print*, "rho_in = ",rho
 !               print*, "e_in = ",e_orig
 !               print*, "rho_out = ",rho_out
