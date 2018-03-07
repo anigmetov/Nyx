@@ -183,6 +183,8 @@ subroutine integrate_state_vode(lo, hi, &
                         T_out ,ne_out ,e_out, fn_out)
                 end if
 
+                e_out = e_orig
+
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
