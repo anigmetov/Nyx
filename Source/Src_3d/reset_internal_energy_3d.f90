@@ -44,7 +44,7 @@
            ! Reset (e from e) if it's greater than 0.01% of big E.
            if (rho_eint .gt. 0.d0 .and. rho_eint / u(i,j,k,UEDEN) .gt. 1.d-6) then
 
-               u(i,j,k,UEINT) = rho_eint
+!               u(i,j,k,UEINT) = rho_eint
 
            ! If (e from E) < 0 or (e from E) < .0001*E but (e from e) > 0.
            else if (u(i,j,k,UEINT) .gt. 0.d0) then

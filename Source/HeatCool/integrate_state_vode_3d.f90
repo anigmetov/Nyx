@@ -141,7 +141,7 @@ subroutine integrate_state_vode(lo, hi, &
                 T_orig  = diag_eos(i,j,k,TEMP_COMP)
                 ne_orig = diag_eos(i,j,k,  NE_COMP)
                 rho_init_vode = rho
-                rho_src = src(i,j,k,URHO)
+                rho_src = src(i,j,k,URHO) / half_dt
                 rhoe_src = src(i,j,k,UEINT) 
                 e_src   = src(i,j,k,UMX)
 
@@ -233,6 +233,7 @@ subroutine integrate_state_vode(lo, hi, &
                 if(s_comp .ge. 10) then
                 ! Update (rho e) and (rho E)
                 state(i,j,k,URHO) = rho_out
+                state(i,j,k,URHO) = rho_init_vode+rho_src
 !                state(i,j,k,URHO) = rho + rho_src_
                 diag_eos(i,j,k, DIAG2_COMP) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
 !                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
