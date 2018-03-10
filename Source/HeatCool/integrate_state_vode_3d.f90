@@ -42,7 +42,7 @@ subroutine integrate_state_vode(lo, hi, &
     use comoving_module, only: comoving_h, comoving_OmB
     use comoving_nd_module, only: fort_integrate_comoving_a
     use atomic_rates_module, only: YHELIUM
-    use vode_aux_module    , only: JH_vode, JHe_vode, z_vode, i_vode, j_vode, k_vode, rho_init_vode
+    use vode_aux_module    , only: JH_vode, JHe_vode, z_vode, i_vode, j_vode, k_vode, rho_init_vode, i_point, j_point, k_point
     use reion_aux_module   , only: zhi_flash, zheii_flash, flash_h, flash_he, &
                                    T_zhi, T_zheii, inhomogeneous_on
 
@@ -114,7 +114,9 @@ subroutine integrate_state_vode(lo, hi, &
     if (flash_h ) H_reion_z  = zhi_flash
     if (flash_he) He_reion_z = zheii_flash
 
-
+    i_point = 26
+    j_point = 16
+    k_point = 0
     ! Note that (lo,hi) define the region of the box containing the grow cells
     ! Do *not* assume this is just the valid region
     ! apply heating-cooling to UEDEN and UEINT
@@ -160,8 +162,8 @@ subroutine integrate_state_vode(lo, hi, &
                 j_vode = j
                 k_vode = k
                 print_radius = 1
-                if ( ((ABS(i_vode-13) .lt. print_radius  .and. &
-                     ABS(j_vode-27).lt.print_radius .and. ABS(k_vode-29).lt.print_radius ))  &
+                if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
+                     ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  &
                      !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
                      !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
                      .and. .not. ((ABS(i_vode-28) .lt. print_radius  .and. &
@@ -176,7 +178,7 @@ subroutine integrate_state_vode(lo, hi, &
                 if(s_comp .ge. 10) then
 !                   call vode_wrapper_split(.5*half_dt,rho,T_orig,ne_orig,e_orig, &
 !                        rho_out, T_out ,ne_out ,e_out, fn_out, rho_src, e_src)
-                   if(.TRUE.) then
+                   if(.FALSE.) then
                    call vode_wrapper_split(.5*half_dt,rho,T_orig,ne_orig,e_orig, &
                         rho_out, T_out ,ne_out ,e_out, fn_out, rho_src, e_src)
                    rho=rho_out
@@ -231,8 +233,8 @@ subroutine integrate_state_vode(lo, hi, &
                    call nyx_eos_T_given_Re(JH_vode, JHe_vode, T_out, ne_out, rho, e_out, a, species)
                 endif
 
-!!!                ! putting this here as well as immediately after the wrapper calls seems to have no effect
-!!!                e_out = e_orig
+                ! putting this here as well as immediately after the wrapper calls seems to have no effect
+                e_out = e_orig
 !               print*, "rho_in = ",rho
 !               print*, "e_in = ",e_orig
 !               print*, "rho_out = ",rho_out
@@ -243,7 +245,7 @@ subroutine integrate_state_vode(lo, hi, &
                 ! Update (rho e) and (rho E)
 !!!!!!!!!!! Temporarily commenting out rho update in integrate_state for sdc
                 state(i,j,k,URHO) = rho_out
-!                state(i,j,k,URHO) = rho_init_vode+src(i,j,k,URHO)
+                state(i,j,k,URHO) = rho_init_vode+src(i,j,k,URHO)
 !                state(i,j,k,URHO) = rho + rho_src_
                 diag_eos(i,j,k, DIAG2_COMP) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
 !                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
@@ -296,12 +298,8 @@ subroutine integrate_state_vode(lo, hi, &
                    diag_eos(i,j,k, DIAG2_COMP) = a
 !                endif
                 end if
-                if ( ((ABS(i_vode-13) .lt. print_radius  .and. &
-                     ABS(j_vode-27).lt.print_radius .and. ABS(k_vode-29).lt.print_radius ))  &
-                     !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
-                     !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
-                     .and. .not. ((ABS(i_vode-28) .lt. print_radius  .and. &
-                     ABS(j_vode-21).lt.print_radius .and. ABS(k_vode-25).lt.print_radius )) )then
+                if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
+                     ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  ) then
     if(s_comp .ge. 10 .or. .TRUE.) print*, "rho_out:", rho_out
     if(s_comp .ge. 10 .or. .TRUE.) print*, "rho_State:", state(i,j,k,URHO)
 
@@ -324,7 +322,8 @@ subroutine vode_wrapper_split(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_
 
     use amrex_fort_module, only : rt => amrex_real
     use vode_aux_module, only: rho_vode, T_vode, ne_vode, &
-                               i_vode, j_vode, k_vode, fn_vode, NR_vode, rho_src_vode, e_src_vode
+                               i_vode, j_vode, k_vode, fn_vode, NR_vode, rho_src_vode, e_src_vode,&
+                               i_point, j_point, k_point
     use meth_params_module, only: STRANG_COMP
     use bl_constants_module, only: M_PI
     use eos_params_module
@@ -449,14 +448,8 @@ subroutine vode_wrapper_split(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_
 !         print *, 'Newton-Rhaphson iterations per vode call=', fn_out
 !      end if
           print_radius = 1
-      if ( &!!((ABS(i_vode-33) .lt. print_radius  .and. &
-           !!ABS(j_vode-45).lt.print_radius .and. ABS(k_vode-22).lt.print_radius )) )then
-!           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
-!           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
-           ((ABS(i_vode-29) .lt. print_radius  .and. &
-           ABS(j_vode-21).lt.print_radius .and. ABS(k_vode-25).lt.print_radius )) )then
-!           ((i_vode .eq. 94 .and. j_vode.eq.112.and. k_vode.eq.40) ) ) then
-!         print *, 'at i=',i_vode,'j=',j_vode,'k=',k_vode, 'fn_vode='fn_vode, 'NR_vode=', NR_vode        
+                if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
+                     ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  ) then
            print *, 'Entering dvode'
 !     FMT = "(A6,\,I4,\, ES15.5,\, ES15.5E3,\, ES15.5,\, ES15.5)"
 !     if(g_debug.eq.0) then
@@ -549,9 +542,13 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out, fn_
 
     use amrex_fort_module, only : rt => amrex_real
     use vode_aux_module, only: rho_vode, T_vode, ne_vode, &
-                               i_vode, j_vode, k_vode
+                               i_vode, j_vode, k_vode, &
+                               i_point, j_point, k_point, NR_vode, fn_vode
+    use meth_params_module, only: STRANG_COMP
 
     implicit none
+
+    include "g_debug.h"
 
     real(rt), intent(in   ) :: dt
     real(rt), intent(in   ) :: rho_in, T_in, ne_in, e_in
@@ -612,7 +609,9 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out, fn_
     integer, dimension(LIW) :: iwork
     
     real(rt) :: rpar
-    integer          :: ipar
+    integer          :: ipar, print_radius
+    CHARACTER(LEN=80) :: FMT
+
 
     EXTERNAL jac, f_rhs
     
@@ -621,6 +620,9 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out, fn_
     T_vode   = T_in
     ne_vode  = ne_in
     rho_vode = rho_in
+    fn_vode  = 0
+    NR_vode  = 0
+    print_radius = 1
 
     ! We want VODE to re-initialize each time we call it
     istate = 1
@@ -641,6 +643,24 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out, fn_
     atol(1) = 1.d-4 * e_in
     rtol(1) = 1.d-4
 
+    print_radius = 1
+                if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
+                     ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  ) then
+           print *, 'Entering dvode'
+!     FMT = "(A6,\,I4,\, ES15.5,\, ES15.5E3,\, ES15.5,\, ES15.5)"
+!     if(g_debug.eq.0) then
+!        print(FMT), 'NJis1:',STRANG_COMP,e_in,e_out,T_in, T_out
+!     else
+!        print(FMT), 'YJis1:',STRANG_COMP,e_in,e_out,T_in, T_out
+!     end if
+!           print *, 'rho_in1= ', rho_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!           print *, 'e_in1= ', e_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!           print *, 'T_in1= ', T_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
+ end if
+    
+    !calling dvode
+    g_debug = 0
+
     ! call the integration routine
     call dvode(f_rhs, NEQ, y, time, dt, ITOL, rtol, atol, ITASK, &
                istate, IOPT, rwork, LRW, iwork, LIW, jac, MF_NUMERICAL_JAC, &
@@ -649,6 +669,29 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out, fn_
     e_out  = y(1)
     T_out  = T_vode
     ne_out = ne_vode
+      if ( &!!((ABS(i_vode-33) .lt. print_radius  .and. &
+           !!ABS(j_vode-45).lt.print_radius .and. ABS(k_vode-22).lt.print_radius )) )then
+!           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
+!           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
+           ((ABS(i_vode-29) .lt. print_radius  .and. &
+           ABS(j_vode-21).lt.print_radius .and. ABS(k_vode-25).lt.print_radius )) )then
+!           ((i_vode .eq. 94 .and. j_vode.eq.112.and. k_vode.eq.40) ) ) then
+!         print *, 'at i=',i_vode,'j=',j_vode,'k=',k_vode, 'fn_vode='fn_vode, 'NR_vode=', NR_vode        
+       print *, 'Exited dvode'
+      FMT = "(A6, I4, ES15.5, ES15.5E3, ES15.5, ES15.5)"
+      if(g_debug.eq.0) then
+         print(FMT), 'NJis2:',STRANG_COMP,e_in,e_out,T_in, T_out
+      else
+         print(FMT), 'YJis2:',STRANG_COMP,e_in,e_out,T_in, T_out
+      end if
+!       print *, 'HU = ', rwork(11), 'at (i,j,k) ',i_vode,j_vode,k_vode
+!       print *, 'rho_in = ', rho_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!       print *, 'e_in = ', e_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!       print *, 'e_ot = ', e_out, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!       print *, 'T_in = ', T_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!       print *, 'T_ot = ', T_out, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!       print *, 'atol = ', atol(1), 'at (i,j,k) ',i_vode,j_vode,k_vode
+      end if
 
     if (istate < 0) then
        print *, 'istate = ', istate, 'at (i,j,k) ',i_vode,j_vode,k_vode

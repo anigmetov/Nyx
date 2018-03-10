@@ -137,8 +137,8 @@ Nyx::just_the_hydro_split (Real time,
 
     FArrayBox flux[BL_SPACEDIM], u_gdnv[BL_SPACEDIM];
 
-    int sdc_iter_max = 1;
-
+    int sdc_iter_max = 2;
+    printf("time at iter before advance_gas: %i\t%g\n", sdc_iter,time);
     for (sdc_iter = 0; sdc_iter < sdc_iter_max; sdc_iter++)
     {
        std::cout << "STARTING SDC_ITER LOOP " << sdc_iter << std::endl;
@@ -204,7 +204,7 @@ Nyx::just_the_hydro_split (Real time,
         courno = std::max(courno, cflLoc);
 
        } // end of omp parallel region
-
+	  printf("time at iter after advance_gas: %i\t%g\n", sdc_iter,time);
        // Update Fab for variables used after advection
 
        // If at end of sdc, now have fluxes in stateout (S_new) as well as momentum etc
@@ -222,7 +222,7 @@ Nyx::just_the_hydro_split (Real time,
          // Stores I^1 in D_new(diag1_comp) and ext_src_old(UEINT)
 
          sdc_first_step(time, dt, S_old_tmp, D_new, ext_src_old);
-
+	 printf("time at iter after sdc_first: %i\t%g\n", sdc_iter,time);
 	 // Consider changing to a copy operation
 	 // I_R is stored in two places, but we need it in diag_eos for the next timestep
          //    MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
@@ -237,8 +237,9 @@ Nyx::just_the_hydro_split (Real time,
 	else {
 	  printf("Density component is: %i",Density);
 	  	  MultiFab::Copy(S_new,S_old_tmp,Density,Density,1,0);
-	  	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
-	  	  MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
+		  //	  	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
+		  //	  	  MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
+	  	  MultiFab::Copy(D_new,D_old,Temp_comp,Temp_comp,1,0);
 	}
 	
 

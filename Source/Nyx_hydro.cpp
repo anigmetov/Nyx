@@ -157,7 +157,7 @@ Nyx::just_the_hydro (Real time,
       sdc_zeroth_step(time,dt,S_old_tmp,D_old_tmp, ext_src_old);
       MultiFab::Copy(ext_src_old,D_old_tmp,Diag1_comp,Eint,1,0);
       }
-
+    printf("time at iter before advance_gas: %i\t%g\n", 0,time);
 
     // OPENMP loop over fort_advance_gas "advection"
 #ifdef _OPENMP
@@ -221,7 +221,7 @@ Nyx::just_the_hydro (Real time,
         courno = std::max(courno, cflLoc);
 
        } // end of omp parallel region
-
+    printf("time at iter after advance_gas: %i\t%g\n", 0,time);
        // Update Fab for variables used after advection
 
        // If at end of sdc, now have fluxes in stateout (S_new) as well as momentum etc
@@ -342,7 +342,7 @@ Nyx::just_the_hydro (Real time,
       MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
       }
 
-
+    printf("time at iter before second strang: %i\t%g\n", 0,time);
 
 #ifndef NDEBUG
     if (S_new.contains_nan(Density, S_new.nComp(), 0))
@@ -353,7 +353,7 @@ Nyx::just_the_hydro (Real time,
     // This returns updated (rho e), (rho E), and Temperature
     if (add_ext_src && strang_split)
         strang_second_step(cur_time,dt,S_new,D_new);
-
+    printf("time at iter after second strang: %i\t%g\n", 0,time);
 #ifndef NDEBUG
     if (S_new.contains_nan(Density, S_new.nComp(), 0))
         amrex::Abort("S_new has NaNs after the second strang call");
