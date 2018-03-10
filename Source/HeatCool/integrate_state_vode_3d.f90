@@ -115,11 +115,6 @@ subroutine integrate_state_vode(lo, hi, &
     if (flash_he) He_reion_z = zheii_flash
 
 
-    if(s_comp .ge.10)    print*, "rho~:", state(29,21,25,URHO)+half_dt*src(i,j,k,URHO)
-
-    print*,"lower bounds",lo
-    print*,"higher bounds",hi
-
     ! Note that (lo,hi) define the region of the box containing the grow cells
     ! Do *not* assume this is just the valid region
     ! apply heating-cooling to UEDEN and UEINT
@@ -141,7 +136,7 @@ subroutine integrate_state_vode(lo, hi, &
                 T_orig  = diag_eos(i,j,k,TEMP_COMP)
                 ne_orig = diag_eos(i,j,k,  NE_COMP)
                 rho_init_vode = rho
-                rho_src = src(i,j,k,URHO) / half_dt
+                rho_src = src(i,j,k,URHO) / half_dt 
                 rhoe_src = src(i,j,k,UEINT) 
                 e_src   = src(i,j,k,UMX)
 
@@ -165,26 +160,40 @@ subroutine integrate_state_vode(lo, hi, &
                 j_vode = j
                 k_vode = k
                 print_radius = 1
-                if ( ((ABS(i_vode-50) .lt. print_radius  .and. &
-                     ABS(j_vode-15).lt.print_radius .and. ABS(k_vode-65).lt.print_radius ))  &
+                if ( ((ABS(i_vode-13) .lt. print_radius  .and. &
+                     ABS(j_vode-27).lt.print_radius .and. ABS(k_vode-29).lt.print_radius ))  &
                      !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
                      !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
                      .and. .not. ((ABS(i_vode-28) .lt. print_radius  .and. &
                      ABS(j_vode-21).lt.print_radius .and. ABS(k_vode-25).lt.print_radius )) )then
                    FMT="(A6,I1,/,ES21.15,/,ES21.15E2,/,ES21.15,/,ES21.15,/,ES21.15,/,ES21.15,/,ES21.15)"
                    print(FMT), "IntSta",STRANG_COMP, a, half_dt, rho, T_orig, ne_orig, e_orig
+    if(s_comp .ge.10 .or. .TRUE.)    print*, "rho~:", state(i,j,k,URHO)+half_dt*src(i,j,k,URHO)
+    if(s_comp .ge.10 .or. .TRUE.)    print*, "rho_in~:", state(i,j,k,URHO)
+    if(s_comp .ge.10 .or. .TRUE.)    print*, "rho_src~:", src(i,j,k,URHO)
                 end if
 
                 if(s_comp .ge. 10) then
+!                   call vode_wrapper_split(.5*half_dt,rho,T_orig,ne_orig,e_orig, &
+!                        rho_out, T_out ,ne_out ,e_out, fn_out, rho_src, e_src)
+                   if(.TRUE.) then
+                   call vode_wrapper_split(.5*half_dt,rho,T_orig,ne_orig,e_orig, &
+                        rho_out, T_out ,ne_out ,e_out, fn_out, rho_src, e_src)
+                   rho=rho_out
+                   T_orig=T_out
+                   ne_orig=ne_out
+                   e_orig=e_out
+                   call vode_wrapper_split(.5*half_dt,rho,T_orig,ne_orig,e_orig, &
+                        rho_out, T_out ,ne_out ,e_out, fn_out, rho_src, e_src)
+                   else
                    call vode_wrapper_split(half_dt,rho,T_orig,ne_orig,e_orig, &
                         rho_out, T_out ,ne_out ,e_out, fn_out, rho_src, e_src)
+                   end if
                 else
                    call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
                         T_out ,ne_out ,e_out, fn_out)
                 end if
-
                 e_out = e_orig
-
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
@@ -222,8 +231,8 @@ subroutine integrate_state_vode(lo, hi, &
                    call nyx_eos_T_given_Re(JH_vode, JHe_vode, T_out, ne_out, rho, e_out, a, species)
                 endif
 
-                ! putting this here as well as immediately after the wrapper calls seems to have no effect
-                e_out = e_orig
+!!!                ! putting this here as well as immediately after the wrapper calls seems to have no effect
+!!!                e_out = e_orig
 !               print*, "rho_in = ",rho
 !               print*, "e_in = ",e_orig
 !               print*, "rho_out = ",rho_out
@@ -232,16 +241,17 @@ subroutine integrate_state_vode(lo, hi, &
 
                 if(s_comp .ge. 10) then
                 ! Update (rho e) and (rho E)
+!!!!!!!!!!! Temporarily commenting out rho update in integrate_state for sdc
                 state(i,j,k,URHO) = rho_out
-                state(i,j,k,URHO) = rho_init_vode+rho_src
+!                state(i,j,k,URHO) = rho_init_vode+src(i,j,k,URHO)
 !                state(i,j,k,URHO) = rho + rho_src_
                 diag_eos(i,j,k, DIAG2_COMP) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
 !                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
                 state(i,j,k,UEINT) = rho_out * e_out
 
                 ! Store I_R
-                diag_eos(i,j,k, DIAG1_COMP) = a_end* rho_out *e_out-&
-                     (a*rho* e_orig + a_end*a_end*half_dt*src(i,j,k,UEINT))
+                diag_eos(i,j,k, DIAG1_COMP) = 0.d0*(a_end* rho_out *e_out-&
+                     (a*rho* e_orig + a_end*a_end*half_dt*src(i,j,k,UEINT)))
                 src(i,j,k,UEINT) = diag_eos(i,j,k,DIAG1_COMP)
                 
                 ! Use I_R to update rhoE
@@ -286,12 +296,27 @@ subroutine integrate_state_vode(lo, hi, &
                    diag_eos(i,j,k, DIAG2_COMP) = a
 !                endif
                 end if
+                if ( ((ABS(i_vode-13) .lt. print_radius  .and. &
+                     ABS(j_vode-27).lt.print_radius .and. ABS(k_vode-29).lt.print_radius ))  &
+                     !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
+                     !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
+                     .and. .not. ((ABS(i_vode-28) .lt. print_radius  .and. &
+                     ABS(j_vode-21).lt.print_radius .and. ABS(k_vode-25).lt.print_radius )) )then
+    if(s_comp .ge. 10 .or. .TRUE.) print*, "rho_out:", rho_out
+    if(s_comp .ge. 10 .or. .TRUE.) print*, "rho_State:", state(i,j,k,URHO)
+
+end if
+
+    if(rho_out .le. 0.d0) then
+       print*, "rho_out neg:", rho_out
+    end if
+    if(state(i,j,k,URHO) .le. 0.d0) then
+       print*, "rho_State neg:", state(i,j,k,URHO)
+    end if
 
             end do ! i
         end do ! j
     end do ! k
-
-    if(s_comp .ge. 10) print*, "rho_out:", state(29,21,25,URHO)
 
 end subroutine integrate_state_vode
 
@@ -443,7 +468,6 @@ subroutine vode_wrapper_split(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_
 !           print *, 'e_in1= ', e_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
 !           print *, 'T_in1= ', T_in, 'at (i,j,k) ',i_vode,j_vode,k_vode
  end if
-       print *, 'someone entered dvode in split'
     
     !calling dvode
     g_debug = 0
@@ -486,7 +510,6 @@ subroutine vode_wrapper_split(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_
 !       print *, 'T_ot = ', T_out, 'at (i,j,k) ',i_vode,j_vode,k_vode
 !       print *, 'atol = ', atol(1), 'at (i,j,k) ',i_vode,j_vode,k_vode
       end if
-       print *, 'someone exited dvode in split'
 
 !      if (i_vode .eq. 52 .and. j_vode.eq.52.and. k_vode.eq.30) then
 !         print *, 'Newton-Rhaphson iterations per vode call=', NR_vode

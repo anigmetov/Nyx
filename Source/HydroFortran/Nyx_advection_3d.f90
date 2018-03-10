@@ -1337,7 +1337,7 @@
       enddo
 
       if (sdc_split .gt. 0) then
-         print*,'creating src terms in consup'
+!         print*,'creating src terms in consup'
          do n = 1, NVAR
 
             ! update everything else with fluxes and source terms
@@ -1355,7 +1355,7 @@
                              ) * a_half_inv
 
                         ! Reset URHO so that we can integrate in integrate_state
-!                        uout(i,j,k,n) = uin(i,j,k,n)
+                        uout(i,j,k,n) = uin(i,j,k,n)
 
                         !A_Momentum
                      else if (n .ge. UMX .and. n .le. UMZ) then
@@ -1398,12 +1398,12 @@
                                          / (uin(i,j,k,URHO) + dt * src(i,j,k,URHO)) &
                                          - (uin(i,j,k,UEINT) * a_oldsq )/ (uin(i,j,k,URHO) * a_oldsq )
                         ! (rho X_i) and (rho adv_i) and (rho aux_i)
-                     else
-                        src(i,j,k,n) = uin(i,j,k,n) + &
-                             ( ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
-                             +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
-                             +   flux3(i,j,k,n) - flux3(i,j,k+1,n)) * volinv &
-                             +   dt * src(i,j,k,n) ) * a_half_inv
+!                     else
+!                        src(i,j,k,n) = uin(i,j,k,n) + &
+!                             ( ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
+!                             +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
+!                             +   flux3(i,j,k,n) - flux3(i,j,k+1,n)) * volinv &
+!                             +   dt * src(i,j,k,n) ) * a_half_inv
                      endif
 
                   enddo

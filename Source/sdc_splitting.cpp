@@ -60,7 +60,7 @@ Nyx::sdc_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, Multi
     BL_PROFILE("Nyx::sdc_first_step()");
     Real half_dt = 0.5*dt;
 
-    const Real a = get_comoving_a(time);
+    const Real a = get_comoving_a(time+dt);
     const Real* dx = geom.CellSize();
     int strang_comp  =   11;
 #ifndef FORCING

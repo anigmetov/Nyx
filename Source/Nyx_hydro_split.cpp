@@ -74,15 +74,8 @@ Nyx::just_the_hydro_split (Real time,
     
 
 
-    /*
-    // Gives us I^0 from integration, will add using previous I later
-    // Stores I^0 in D_old_tmp(diag_comp)
-    if (add_ext_src && sdc_split)
-    {
-    sdc_zeroth_step(time,dt,S_old_tmp,D_old_tmp, ext_src_old);
-    MultiFab::Copy(ext_src_old,D_old_tmp,Diag1_comp,Eint,1,0);
-    }
-    */
+    
+        
     
     // Output source term flag data
     if (add_ext_src && ParallelDescriptor::IOProcessor())
@@ -130,12 +123,23 @@ Nyx::just_the_hydro_split (Real time,
     MultiFab D_old_tmp(D_old.boxArray(), D_old.DistributionMap(), D_old.nComp(), NUM_GROW);
     FillPatch(*this, D_old_tmp, NUM_GROW, time, DiagEOS_Type, 0, D_old.nComp());
 
+    /*
+    // Gives us I^0 from integration, will add using previous I later
+    // Stores I^0 in D_old_tmp(diag_comp)
+    if (add_ext_src && sdc_split)
+    {
+    sdc_zeroth_step(time,dt,S_old_tmp,D_old_tmp, ext_src_old);
+    MultiFab::Copy(ext_src_old,D_old_tmp,Diag1_comp,Eint,1,0);
+    }
+*/
 
     //Begin loop over SDC iterations
 
     FArrayBox flux[BL_SPACEDIM], u_gdnv[BL_SPACEDIM];
 
-    for (sdc_iter = 0; sdc_iter < 2; sdc_iter++)
+    int sdc_iter_max = 1;
+
+    for (sdc_iter = 0; sdc_iter < sdc_iter_max; sdc_iter++)
     {
        std::cout << "STARTING SDC_ITER LOOP " << sdc_iter << std::endl;
 
@@ -173,7 +177,6 @@ Nyx::just_the_hydro_split (Real time,
              Real ske = 0;
 
   	    // Get F^(n+1/2)
-    	    // Possibly unsafe if .5*dt+.5*dt~=dt
 
 	fort_advance_gas
             (&time, bx.loVect(), bx.hiVect(), 
@@ -206,10 +209,11 @@ Nyx::just_the_hydro_split (Real time,
 
        // If at end of sdc, now have fluxes in stateout (S_new) as well as momentum etc
 
+       
        // We copy old Temp and Ne to new Temp and Ne so that they can be used
        //    as guesses when we next need them.
        // Possible this should be D_old.nComp()-4 instead, but the next copy overwrites anyways
-       MultiFab::Copy(D_new,D_old,0,0,D_old.nComp()-2,0);
+       MultiFab::Copy(D_new,D_old,0,0,D_old.nComp()-4,0);
 
        // Writes over old extra output variables with new extra output variables
        MultiFab::Copy(D_new,D_old_tmp,Sfnr_comp,Sfnr_comp,4,0);
@@ -225,8 +229,18 @@ Nyx::just_the_hydro_split (Real time,
     
 	 //If another sdc iteration is performed, use the old state data
 	 // This could be more general (sdc_iter< sdc_iter_max-1)
-        if (sdc_iter < 1)
+        if (sdc_iter < sdc_iter_max-1) 
+	  {
           MultiFab::Copy(S_old_tmp,S_old,0,0,S_old.nComp(),0);
+	  //          MultiFab::Copy(D_old_tmp,D_old,0,0,D_old.nComp(),0);
+	  }
+	else {
+	  printf("Density component is: %i",Density);
+	  	  MultiFab::Copy(S_new,S_old_tmp,Density,Density,1,0);
+	  	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
+	  	  MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
+	}
+	
 
     }
     //End loop over SDC iterations

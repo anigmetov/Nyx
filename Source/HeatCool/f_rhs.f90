@@ -114,7 +114,7 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
 !       print *, 'rho_heat = ', rho_heat, 'at (i,j,k) ',i_vode,j_vode,k_vode
        print *, 'rho = ', rho_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
       end if
-         yp_out(1) = 0.d0*energy + e_src_vode*a
+         yp_out(1) = 0.d0*energy + 0.d0 * e_src_vode*a
          yp_out(2) = rho_src_vode
          return
       end if
