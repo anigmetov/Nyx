@@ -123,6 +123,9 @@ Nyx::just_the_hydro_split (Real time,
     MultiFab D_old_tmp(D_old.boxArray(), D_old.DistributionMap(), D_old.nComp(), NUM_GROW);
     FillPatch(*this, D_old_tmp, NUM_GROW, time, DiagEOS_Type, 0, D_old.nComp());
 
+
+	    printf("Compare %g", S_old_tmp.norm0(Density));
+	    printf("Compare %g", S_old.norm0(Density));
     /*
     // Gives us I^0 from integration, will add using previous I later
     // Stores I^0 in D_old_tmp(diag_comp)
@@ -148,9 +151,10 @@ Nyx::just_the_hydro_split (Real time,
        //Done above with Copy, or at the end of the loop inside iterate by updating src
 
        // OPENMP loop over fort_advance_gas "advection"
+      /*
 #ifdef _OPENMP
 #pragma omp parallel reduction(max:courno) reduction(+:e_added,ke_added)
-#endif
+#endif*/
           {
           Real cflLoc = -1.e+200;
 
@@ -221,24 +225,28 @@ Nyx::just_the_hydro_split (Real time,
          // Gives us I^1 from integration with F^(n+1/2) source
          // Stores I^1 in D_new(diag1_comp) and ext_src_old(UEINT)
 
-         sdc_first_step(time, dt, S_old_tmp, D_new, ext_src_old);
+       sdc_first_step(time, dt, S_old_tmp, D_new, ext_src_old,sdc_iter+11);
 	 printf("time at iter after sdc_first: %i\t%g\n", sdc_iter,time);
 	 // Consider changing to a copy operation
 	 // I_R is stored in two places, but we need it in diag_eos for the next timestep
-         //    MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
+	 //	 MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
     
 	 //If another sdc iteration is performed, use the old state data
 	 // This could be more general (sdc_iter< sdc_iter_max-1)
         if (sdc_iter < sdc_iter_max-1) 
 	  {
+	    //	    printf("Compare %g", (S_old.minus(S_old_tmp,0,S_old.nComp(),0)).norm2(Density))
           MultiFab::Copy(S_old_tmp,S_old,0,0,S_old.nComp(),0);
+	  //	  MultiFab::Copy(S_old_tmp,S_old,Density,Density,1,0);
+	  //	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
+	  //	  MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
 	  //          MultiFab::Copy(D_old_tmp,D_old,0,0,D_old.nComp(),0);
 	  }
 	else {
 	  printf("Density component is: %i",Density);
 	  	  MultiFab::Copy(S_new,S_old_tmp,Density,Density,1,0);
-		  //	  	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
-		  //	  	  MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
+		  //MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
+		  //MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
 	  	  MultiFab::Copy(D_new,D_old,Temp_comp,Temp_comp,1,0);
 	}
 	

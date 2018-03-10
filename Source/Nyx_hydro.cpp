@@ -140,7 +140,6 @@ Nyx::just_the_hydro (Real time,
     MultiFab D_old_tmp(D_old.boxArray(), D_old.DistributionMap(), D_old.nComp(), NUM_GROW);
     FillPatch(*this, D_old_tmp, NUM_GROW, time, DiagEOS_Type, 0, D_old.nComp());
 
-
     //
     // Take first strang step from time to time+dt/2
     // Output variables into temporary containers
@@ -152,6 +151,7 @@ Nyx::just_the_hydro (Real time,
     //
     // Gives us I^0 from integration, will add using previous I later
     // Stores I^0 in D_old_tmp(diag_comp)
+
     if (add_ext_src && sdc_split)
       {
       sdc_zeroth_step(time,dt,S_old_tmp,D_old_tmp, ext_src_old);
@@ -330,17 +330,6 @@ Nyx::just_the_hydro (Real time,
 
         compute_new_temp();
     } // end if (add_ext_src && !strang_split)
-
-    //
-    // Gives us I^1 from integration with F^(n+1/2) source
-    // Stores I^1 in D_new(diag1_comp)
-    if (add_ext_src && sdc_split)
-      {
-	//fix earlier halving of dt
-	dt=2*dt;
-      sdc_first_step(time, dt, S_old, D_new, S_new);
-      MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
-      }
 
     printf("time at iter before second strang: %i\t%g\n", 0,time);
 

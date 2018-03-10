@@ -1171,6 +1171,7 @@
       use bl_constants_module
       use meth_params_module, only : difmag, NVAR, URHO, UMX, UMZ, &
            UEDEN, UEINT, UFS, normalize_species, gamma_minus_1
+      use vode_aux_module    , only: i_point, j_point, k_point
 
       implicit none
 
@@ -1197,7 +1198,7 @@
       real(rt) :: area1, area2, area3
       real(rt) :: vol, volinv, a_newsq_inv
       real(rt) :: a_half_inv, a_new_inv, dt_a_new
-      integer          :: i, j, k, n
+      integer          :: i, j, k, n, print_radius
 
       a_half  = HALF * (a_old + a_new)
       a_oldsq = a_old * a_old
@@ -1336,7 +1337,7 @@
          enddo
       enddo
 
-      if (sdc_split .gt. 0) then
+      if (sdc_split .gt. 1e-2) then
 !         print*,'creating src terms in consup'
          do n = 1, NVAR
 
@@ -1347,13 +1348,25 @@
 
                      ! A_Density
                      if (n .eq. URHO) then
+                        if ( ((ABS(i-i_point) .lt. print_radius  .and. &
+                             ABS(j-j_point).lt.print_radius .and. ABS(k-k_point).lt.print_radius )) ) then
+                           print*, "Brho_in~:", uin(i,j,k,URHO)
+                           print*, "Brho_out~:", uout(i,j,k,URHO)
+                           print*, "Brho_src~:", src(i,j,k,URHO)
+                        end if
                         src(i,j,k,n) =  &
                              ( ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
                              +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
                              +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * volinv &
 !                             +   dt * src(i,j,k,n)
                              ) * a_half_inv
-
+                        print_radius = 1
+                        if ( ((ABS(i-i_point) .lt. print_radius  .and. &
+                             ABS(j-j_point).lt.print_radius .and. ABS(k-k_point).lt.print_radius )) ) then
+                           print*, "Crho_in~:", uin(i,j,k,URHO)
+                           print*, "Crho_out~:", uout(i,j,k,URHO)
+                           print*, "Crho_src~:", src(i,j,k,URHO)
+                        end if
                         ! Reset URHO so that we can integrate in integrate_state
                         uout(i,j,k,n) = uin(i,j,k,n)
 

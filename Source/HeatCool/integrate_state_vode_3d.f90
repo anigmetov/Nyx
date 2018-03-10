@@ -115,8 +115,8 @@ subroutine integrate_state_vode(lo, hi, &
     if (flash_he) He_reion_z = zheii_flash
 
     i_point = 26
-    j_point = 16
-    k_point = 0
+    j_point = 29
+    k_point = 12
     ! Note that (lo,hi) define the region of the box containing the grow cells
     ! Do *not* assume this is just the valid region
     ! apply heating-cooling to UEDEN and UEINT
@@ -242,6 +242,8 @@ subroutine integrate_state_vode(lo, hi, &
 
 
                 if(s_comp .ge. 10) then
+
+!!!!               if(s_comp .ge. 12) then 
                 ! Update (rho e) and (rho E)
 !!!!!!!!!!! Temporarily commenting out rho update in integrate_state for sdc
                 state(i,j,k,URHO) = rho_out
@@ -250,6 +252,8 @@ subroutine integrate_state_vode(lo, hi, &
                 diag_eos(i,j,k, DIAG2_COMP) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
 !                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
                 state(i,j,k,UEINT) = rho_out * e_out
+               state(i,j,k,UEINT) = diag_eos(i,j,k,DIAG2_COMP)
+                
 
                 ! Store I_R
                 diag_eos(i,j,k, DIAG1_COMP) = 0.d0*(a_end* rho_out *e_out-&
@@ -275,6 +279,16 @@ subroutine integrate_state_vode(lo, hi, &
                    ! mimics ext_src_hc source term
 !                   diag_eos(i,j,k, DIAG1_COMP) = a * (e_out-e_orig)/half_dt
 !                endif
+
+!!!!                else
+
+!!!!                ! Store I_R
+!!!!                diag_eos(i,j,k, DIAG1_COMP) = 0.d0*(a_end* rho_out *e_out-&
+!!!!                     (a*rho* e_orig + a_end*a_end*half_dt*src(i,j,k,UEINT)))
+!!!!                src(i,j,k,UEINT) = diag_eos(i,j,k,DIAG1_COMP)
+                
+
+!!!!            end if
 
                 else
 

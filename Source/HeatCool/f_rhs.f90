@@ -256,6 +256,7 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
 
          ! Convert to the actual term to be used in e_out = e_in + dt*energy
          energy  = energy / rho_vode * (1.0d0+z_vode)
+         energy = 0.d0*energy
          ne_vode = ne_vode / nh
          if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
               ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  ) then

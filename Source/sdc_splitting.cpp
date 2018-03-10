@@ -55,14 +55,13 @@ Nyx::sdc_zeroth_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, Mult
 }
 
 void
-Nyx::sdc_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, MultiFab& S_src)
+Nyx::sdc_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, MultiFab& S_src, int strang_comp)
 {
     BL_PROFILE("Nyx::sdc_first_step()");
     Real half_dt = 0.5*dt;
 
     const Real a = get_comoving_a(time);
     const Real* dx = geom.CellSize();
-    int strang_comp  =   11;
 #ifndef FORCING
     {
       const Real z = 1.0/a - 1.0;
