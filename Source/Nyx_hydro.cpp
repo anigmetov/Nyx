@@ -158,7 +158,8 @@ Nyx::just_the_hydro (Real time,
       MultiFab::Copy(ext_src_old,D_old_tmp,Diag1_comp,Eint,1,0);
       }
     printf("time at iter before advance_gas: %i\t%g\n", 0,time);
-
+	    printf("Compare %g\n", S_old_tmp.norm0(Density));
+	    printf("Compare %g\n", S_old.norm0(Density));
     // OPENMP loop over fort_advance_gas "advection"
 #ifdef _OPENMP
 #pragma omp parallel reduction(max:courno) reduction(+:e_added,ke_added)
@@ -214,6 +215,8 @@ Nyx::just_the_hydro (Real time,
           fluxes[i][mfi].copy(flux[i], mfi.nodaltilebox(i));
         }
 
+	printf("mfi: %i\n",mfi.LocalTileIndex());
+
          e_added += se;
         ke_added += ske;
        } // end of MFIter loop
@@ -223,7 +226,9 @@ Nyx::just_the_hydro (Real time,
        } // end of omp parallel region
     printf("time at iter after advance_gas: %i\t%g\n", 0,time);
        // Update Fab for variables used after advection
-
+    S_old_tmp.setVal(0);
+	    printf("Compare %g\n", S_old_tmp.norm0(Density));
+	    printf("Compare %g\n", S_old.norm0(Density));	    
        // If at end of sdc, now have fluxes in stateout (S_new) as well as momentum etc
 
        // We copy old Temp and Ne to new Temp and Ne so that they can be used

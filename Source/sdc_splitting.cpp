@@ -62,6 +62,7 @@ Nyx::sdc_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, Multi
 
     const Real a = get_comoving_a(time);
     const Real* dx = geom.CellSize();
+    
 #ifndef FORCING
     {
       const Real z = 1.0/a - 1.0;
@@ -69,6 +70,9 @@ Nyx::sdc_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, Multi
     }
 #endif
 
+    //    if(strang_comp>11)
+    //      compute_new_temp();
+    
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
@@ -81,7 +85,7 @@ Nyx::sdc_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, Multi
 
         int  min_iter = 100000;
         int  max_iter =      0;
-	strang_comp  =   11;
+	//	strang_comp  =   11;
 
         integrate_state
                 (bx.loVect(), bx.hiVect(), 

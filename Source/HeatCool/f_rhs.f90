@@ -55,6 +55,7 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
       else
          print(FMT), 'YJfrh:',fn_vode,e_in,rho_vode,T_vode,time
       end if
+      print*, "z_vode = ", z_vode
 
       end if
 
@@ -216,7 +217,7 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
       else
          print(FMT), 'YJfrh:',fn_vode,e_in,rho_vode,T_vode,time
       end if
-
+      print*, "z_vode = ", z_vode
       end if
 
       if (e_in(1) .lt. 0.d0) &

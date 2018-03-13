@@ -20,9 +20,10 @@
 
       use amrex_fort_module, only : rt => amrex_real
       use mempool_module, only : bl_allocate, bl_deallocate
-      use meth_params_module, only : QVAR, NVAR, NHYP, normalize_species
+      use meth_params_module, only : QVAR, NVAR, NHYP, normalize_species, URHO
       use enforce_module, only : enforce_nonnegative_species
       use bl_constants_module
+      use vode_aux_module, only : i_point,j_point,k_point
 
       implicit none
 
@@ -61,10 +62,23 @@
       real(rt), pointer :: srcQ(:,:,:,:)
 
       real(rt) dx,dy,dz
-      integer ngq,ngf
+      integer ngq,ngf,i,j,k
       integer q_l1, q_l2, q_l3, q_h1, q_h2, q_h3
       integer srcq_l1, srcq_l2, srcq_l3, srcq_h1, srcq_h2, srcq_h3
 
+      if(sdc_split .ge. 1e-2) then
+    i_point = 26
+    j_point = 29
+    k_point = 12
+
+    i_point = 1
+    j_point = 8
+    k_point = 49
+
+!    i_point = 15
+!    j_point = 0
+!    k_point = 8
+ endif
       ngq = NHYP
       ngf = 1
 
@@ -164,6 +178,21 @@
                                     lo,hi)
       end if
 
+!      do i=uin_l1,uin_h1
+!      do j=uin_l2,uin_h2
+!      do k=uin_l3,uin_h3
+            do k = lo(3),hi(3)
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)
+                        if ( ((ABS(i-i_point) .lt. 1  .and. &
+                             ABS(j-j_point).lt.1 .and. ABS(k-k_point).lt.1 )) ) then
+      print*, "Drho_in~:", uin(i_point,j_point,k_point,URHO)
+      print*, "Drho_out~:", uout(i_point,j_point,k_point,URHO)
+      print*, "Drho_src~:", src(i_point,j_point,k_point,URHO)
+   end if
+enddo
+enddo
+enddo
       end subroutine fort_advance_gas
 
 
@@ -1267,11 +1296,16 @@
 
                   ! Density
                   if (n .eq. URHO) then
+
+!                     if(sdc_split .ge. 1e-2) then
+!                     uout(i,j,k,n) = uin(i,j,k,n)
+!                     else
                      uout(i,j,k,n) = uin(i,j,k,n) + &
                           ( ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
                           +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
                           +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * volinv &
                           +   dt * src(i,j,k,n) ) * a_half_inv
+!                  end if
 
                      ! Momentum
                   else if (n .ge. UMX .and. n .le. UMZ) then
@@ -1368,7 +1402,13 @@
                            print*, "Crho_src~:", src(i,j,k,URHO)
                         end if
                         ! Reset URHO so that we can integrate in integrate_state
-                        uout(i,j,k,n) = uin(i,j,k,n)
+!                        uout(i,j,k,n) = uin(i,j,k,n)
+                        if ( ((ABS(i-i_point) .lt. print_radius  .and. &
+                             ABS(j-j_point).lt.print_radius .and. ABS(k-k_point).lt.print_radius )) ) then
+                           print*, "Crho_in~:", uin(i,j,k,URHO)
+                           print*, "Crho_out~:", uout(i,j,k,URHO)
+                           print*, "Crho_src~:", src(i,j,k,URHO)
+                        end if
 
                         !A_Momentum
                      else if (n .ge. UMX .and. n .le. UMZ) then
@@ -1392,6 +1432,13 @@
                         ! (dt A_rho e)
                      else if (n .eq. UEINT) then
 
+
+                        if ( ((ABS(i-i_point) .lt. print_radius  .and. &
+                             ABS(j-j_point).lt.print_radius .and. ABS(k-k_point).lt.print_radius )) ) then
+                           print*, "Ce_in~:", uin(i,j,k,n)
+                           print*, "Ce_out~:", uout(i,j,k,n)
+                           print*, "Ce_src~:", src(i,j,k,n)
+                        end if
                         src(i,j,k,n) = a_oldsq * uin(i,j,k,UEDEN) &
                              -( (uin(i,j,k,UMX) * a_old +dt * src(i,j,k,UMX) * a_new)**2 &
                              +  (uin(i,j,k,UMX) * a_old +dt * src(i,j,k,UMX) * a_new)**2 &
@@ -1417,6 +1464,12 @@
 !                             +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
 !                             +   flux3(i,j,k,n) - flux3(i,j,k+1,n)) * volinv &
 !                             +   dt * src(i,j,k,n) ) * a_half_inv
+                        if ( ((ABS(i-i_point) .lt. print_radius  .and. &
+                             ABS(j-j_point).lt.print_radius .and. ABS(k-k_point).lt.print_radius )) ) then
+                           print*, "Ce_in~:", uin(i,j,k,n)
+                           print*, "Ce_out~:", uout(i,j,k,n)
+                           print*, "Ce_src~:", src(i,j,k,n)
+                        end if
                      endif
 
                   enddo

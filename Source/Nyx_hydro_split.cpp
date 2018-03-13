@@ -123,9 +123,16 @@ Nyx::just_the_hydro_split (Real time,
     MultiFab D_old_tmp(D_old.boxArray(), D_old.DistributionMap(), D_old.nComp(), NUM_GROW);
     FillPatch(*this, D_old_tmp, NUM_GROW, time, DiagEOS_Type, 0, D_old.nComp());
 
+    MultiFab S_old_tmp2(S_old.boxArray(), S_old.DistributionMap(), NUM_STATE, NUM_GROW);
+    FillPatch(*this, S_old_tmp2, NUM_GROW, time, State_Type, 0, NUM_STATE);
+
+    MultiFab D_old_tmp2(D_old.boxArray(), D_old.DistributionMap(), D_old.nComp(), NUM_GROW);
+    FillPatch(*this, D_old_tmp2, NUM_GROW, time, DiagEOS_Type, 0, D_old.nComp());
+
 
 	    printf("Compare %g", S_old_tmp.norm0(Density));
 	    printf("Compare %g", S_old.norm0(Density));
+	    printf("Compare %2.15g\n", S_old.norm2(Density));
     /*
     // Gives us I^0 from integration, will add using previous I later
     // Stores I^0 in D_old_tmp(diag_comp)
@@ -170,6 +177,7 @@ Nyx::just_the_hydro_split (Real time,
                  u_gdnv[i].setVal(1.e200);
              }
 
+
              FArrayBox& S_state    = S_old_tmp[mfi];
              FArrayBox& S_stateout = S_new[mfi];
 
@@ -197,9 +205,14 @@ Nyx::just_the_hydro_split (Real time,
              BL_TO_FORTRAN(flux[2]),
              &cflLoc, &a_old, &a_new, &se, &ske, &print_fortran_warnings, &do_grav, &sdc_split);
 
+	
         for (int i = 0; i < BL_SPACEDIM; ++i) {
           fluxes[i][mfi].copy(flux[i], mfi.nodaltilebox(i));
-        }
+	  }
+
+	printf("mfi: %i\n",mfi.LocalTileIndex());
+	//	printf("a_old: %g\n",a_old);
+	//	printf("a_new: %g\n",a_new);
 
          e_added += se;
         ke_added += ske;
@@ -210,23 +223,36 @@ Nyx::just_the_hydro_split (Real time,
        } // end of omp parallel region
 	  printf("time at iter after advance_gas: %i\t%g\n", sdc_iter,time);
        // Update Fab for variables used after advection
-
+	    printf("Compare %g\n", S_old_tmp.norm0(Density));
+	    printf("Compare %g\n", S_old.norm2(Density));
        // If at end of sdc, now have fluxes in stateout (S_new) as well as momentum etc
 
        
        // We copy old Temp and Ne to new Temp and Ne so that they can be used
        //    as guesses when we next need them.
        // Possible this should be D_old.nComp()-4 instead, but the next copy overwrites anyways
-       MultiFab::Copy(D_new,D_old,0,0,D_old.nComp()-4,0);
+	    MultiFab::Copy(D_new,D_old,0,0,D_old.nComp()-4,0);
+	    //       MultiFab::Copy(D_new,D_old,0,0,2,0);
 
        // Writes over old extra output variables with new extra output variables
        MultiFab::Copy(D_new,D_old_tmp,Sfnr_comp,Sfnr_comp,4,0);
+       /*
+       MultiFab::Copy(S_old_tmp,S_new,Eden,Eden,1,0);
+       MultiFab::Copy(S_old_tmp,S_new,Eint,Eint,1,0);
+       MultiFab::Copy(S_old_tmp,S_new,0,0,S_new.nComp(),0);*/
+       MultiFab::Copy(S_old_tmp,S_old,0,0,S_new.nComp(),0);
 
          // Gives us I^1 from integration with F^(n+1/2) source
          // Stores I^1 in D_new(diag1_comp) and ext_src_old(UEINT)
 
        sdc_first_step(time, dt, S_old_tmp, D_new, ext_src_old,sdc_iter+11);
 	 printf("time at iter after sdc_first: %i\t%g\n", sdc_iter,time);
+	 S_old_tmp2.setVal(0);
+	 S_old_tmp2.minus(S_old_tmp,0,S_old_tmp.nComp(),0);
+	 S_old_tmp2.plus(S_old,0,S_old_tmp.nComp(),0);
+	    printf("Compare %g\n", S_old_tmp.norm0(Density));
+	    printf("2-norm plus minus %g\n", S_old_tmp2.norm2(Density));
+	    printf("Compare %2.15g\n", S_old.norm2(Density));
 	 // Consider changing to a copy operation
 	 // I_R is stored in two places, but we need it in diag_eos for the next timestep
 	 //	 MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
@@ -236,7 +262,10 @@ Nyx::just_the_hydro_split (Real time,
         if (sdc_iter < sdc_iter_max-1) 
 	  {
 	    //	    printf("Compare %g", (S_old.minus(S_old_tmp,0,S_old.nComp(),0)).norm2(Density))
-          MultiFab::Copy(S_old_tmp,S_old,0,0,S_old.nComp(),0);
+	    ext_src_old.setVal(0);
+	    MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
+	    //  MultiFab::Copy(S_new,S_old_tmp,0,0,S_old.nComp(),0);
+	    MultiFab::Copy(S_old_tmp,S_old,0,0,S_old.nComp(),0);
 	  //	  MultiFab::Copy(S_old_tmp,S_old,Density,Density,1,0);
 	  //	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
 	  //	  MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
@@ -244,12 +273,19 @@ Nyx::just_the_hydro_split (Real time,
 	  }
 	else {
 	  printf("Density component is: %i",Density);
-	  	  MultiFab::Copy(S_new,S_old_tmp,Density,Density,1,0);
-		  //MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
-		  //MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
+	  MultiFab::Copy(S_new,S_old_tmp,Density,Density,1,0);
+	  /////////////When adding src for rho_e and rho_E works in integrate state, uncomment 
+	  // these lines:
+	  //	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
+	  //	  MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
 	  	  MultiFab::Copy(D_new,D_old,Temp_comp,Temp_comp,1,0);
 	}
-	
+	 S_old_tmp2.setVal(0);
+	 S_old_tmp2.minus(S_old_tmp,0,S_old_tmp.nComp(),4);
+	 S_old_tmp2.plus(S_old,0,S_old_tmp.nComp(),4);
+	    printf("acCompare %g\n", S_old_tmp.norm0(Density));
+	    printf("ac2-norm plus minus %g\n", S_old_tmp2.norm2(Density));
+	    printf("acCompare %2.15g\n", S_old.norm2(Density));
 
     }
     //End loop over SDC iterations

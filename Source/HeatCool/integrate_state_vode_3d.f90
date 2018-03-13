@@ -69,8 +69,17 @@ subroutine integrate_state_vode(lo, hi, &
     real(rt) :: species(5)
 
 !    STRANG_COMP=SFNR_COMP
-
-
+    if(s_comp .lt. 10) then
+    i_point = 2
+    j_point = 9
+    k_point = 50
+    i_point = 1
+    j_point = 8
+    k_point = 49
+!    i_point = 15
+!    j_point = 0
+!    k_point = 8
+end if
 !    STRANG_COMP=SFNR_COMP+s_comp
 
 !!!!! Writing to first componenet spot first automatically, to keep o
@@ -114,9 +123,6 @@ subroutine integrate_state_vode(lo, hi, &
     if (flash_h ) H_reion_z  = zhi_flash
     if (flash_he) He_reion_z = zheii_flash
 
-    i_point = 26
-    j_point = 29
-    k_point = 12
     ! Note that (lo,hi) define the region of the box containing the grow cells
     ! Do *not* assume this is just the valid region
     ! apply heating-cooling to UEDEN and UEINT
@@ -138,7 +144,7 @@ subroutine integrate_state_vode(lo, hi, &
                 T_orig  = diag_eos(i,j,k,TEMP_COMP)
                 ne_orig = diag_eos(i,j,k,  NE_COMP)
                 rho_init_vode = rho
-                rho_src = src(i,j,k,URHO) / half_dt 
+                rho_src = src(i,j,k,URHO) / half_dt
                 rhoe_src = src(i,j,k,UEINT) 
                 e_src   = src(i,j,k,UMX)
 
@@ -170,7 +176,7 @@ subroutine integrate_state_vode(lo, hi, &
                      ABS(j_vode-21).lt.print_radius .and. ABS(k_vode-25).lt.print_radius )) )then
                    FMT="(A6,I1,/,ES21.15,/,ES21.15E2,/,ES21.15,/,ES21.15,/,ES21.15,/,ES21.15,/,ES21.15)"
                    print(FMT), "IntSta",STRANG_COMP, a, half_dt, rho, T_orig, ne_orig, e_orig
-    if(s_comp .ge.10 .or. .TRUE.)    print*, "rho~:", state(i,j,k,URHO)+half_dt*src(i,j,k,URHO)
+    if(s_comp .ge.10 .or. .TRUE.)    print*, "rho~:", state(i,j,k,URHO)+src(i,j,k,URHO) 
     if(s_comp .ge.10 .or. .TRUE.)    print*, "rho_in~:", state(i,j,k,URHO)
     if(s_comp .ge.10 .or. .TRUE.)    print*, "rho_src~:", src(i,j,k,URHO)
                 end if
@@ -240,28 +246,55 @@ subroutine integrate_state_vode(lo, hi, &
 !               print*, "rho_out = ",rho_out
 !               print*, "e_out = ",e_out
 
-
+                if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
+                     ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  &
+                     !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
+                     !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
+                     .and. .not. ((ABS(i_vode-28) .lt. print_radius  .and. &
+                     ABS(j_vode-21).lt.print_radius .and. ABS(k_vode-25).lt.print_radius )) )then
+print*, "EUINT", state(i,j,k,UEINT)
+print*, "EUDEN", state(i,j,k,UEDEN)
+print*, "src", src(i,j,k,UEINT)
+print*, "up E", state(i,j,k,UEDEN) + diag_eos(i,j,k,DIAG1_COMP)
+print*, "up e1", rho_out * e_out
+print*, "up e2", state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
+end if 
                 if(s_comp .ge. 10) then
 
 !!!!               if(s_comp .ge. 12) then 
                 ! Update (rho e) and (rho E)
 !!!!!!!!!!! Temporarily commenting out rho update in integrate_state for sdc
-                state(i,j,k,URHO) = rho_out
-                state(i,j,k,URHO) = rho_init_vode+src(i,j,k,URHO)
+
+!                state(i,j,k,URHO) = rho_out
+!                state(i,j,k,URHO) = rho_init_vode+src(i,j,k,URHO)
+!                state(i,j,k,URHO) = rho_init_vode+half_dt * rho_src
+
+                state(i,j,k,URHO) = state(i,j,k,URHO)+src(i,j,k,URHO)
 !                state(i,j,k,URHO) = rho + rho_src_
                 diag_eos(i,j,k, DIAG2_COMP) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
 !                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
-                state(i,j,k,UEINT) = rho_out * e_out
-               state(i,j,k,UEINT) = diag_eos(i,j,k,DIAG2_COMP)
-                
+
+if(.TRUE.) then
+!!!                state(i,j,k,UEINT) = a*a*state(i,j,k,UEINT) +  src(i,j,k,UEINT)
+!!!                state(i,j,k,UEDEN) = a*a*state(i,j,k,UEDEN) +  src(i,j,k,UEDEN)
+!   state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + a * (e_out-e_orig)/half_dt
+elseif(.FALSE.) then
+                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_out * (e_out-e_orig)
+                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + rho_out * (e_out-e_orig)
+else
+   !!             state(i,j,k,UEINT) = rho_out * e_out
+!                state(i,j,k,UEINT) = diag_eos(i,j,k,DIAG2_COMP)
+
 
                 ! Store I_R
-                diag_eos(i,j,k, DIAG1_COMP) = 0.d0*(a_end* rho_out *e_out-&
+                diag_eos(i,j,k, DIAG1_COMP) = (a_end* rho_out *e_out-&
                      (a*rho* e_orig + a_end*a_end*half_dt*src(i,j,k,UEINT)))
                 src(i,j,k,UEINT) = diag_eos(i,j,k,DIAG1_COMP)
                 
                 ! Use I_R to update rhoE
-                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + diag_eos(i,j,k,UEDEN)
+                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) +  src(i,j,k,UEDEN)
+
+endif
 
                 ! Update T and ne
                 diag_eos(i,j,k,TEMP_COMP) = T_out
@@ -318,7 +351,19 @@ subroutine integrate_state_vode(lo, hi, &
     if(s_comp .ge. 10 .or. .TRUE.) print*, "rho_State:", state(i,j,k,URHO)
 
 end if
-
+                if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
+                     ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  &
+                     !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
+                     !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
+                     .and. .not. ((ABS(i_vode-28) .lt. print_radius  .and. &
+                     ABS(j_vode-21).lt.print_radius .and. ABS(k_vode-25).lt.print_radius )) )then
+print*, "EUINT", state(i,j,k,UEINT)
+print*, "EUDEN", state(i,j,k,UEDEN)
+print*, "src", src(i,j,k,UEINT)
+print*, "up E", state(i,j,k,UEDEN) + diag_eos(i,j,k,DIAG1_COMP)
+print*, "up e1", rho_out * e_out
+print*, "up e2", state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
+end if 
     if(rho_out .le. 0.d0) then
        print*, "rho_out neg:", rho_out
     end if
