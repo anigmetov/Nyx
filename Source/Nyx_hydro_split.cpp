@@ -278,7 +278,7 @@ Nyx::just_the_hydro_split (Real time,
 	  // these lines:
 	  //	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
 	  //	  MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
-	  	  MultiFab::Copy(D_new,D_old,Temp_comp,Temp_comp,1,0);
+	  //MultiFab::Copy(D_new,D_old,Temp_comp,Temp_comp,1,0);
 	}
 	 S_old_tmp2.setVal(0);
 	 S_old_tmp2.minus(S_old_tmp,0,S_old_tmp.nComp(),4);

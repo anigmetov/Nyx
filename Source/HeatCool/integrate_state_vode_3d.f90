@@ -258,6 +258,8 @@ print*, "src", src(i,j,k,UEINT)
 print*, "up E", state(i,j,k,UEDEN) + diag_eos(i,j,k,DIAG1_COMP)
 print*, "up e1", rho_out * e_out
 print*, "up e2", state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
+print*, "up e3", state(i,j,k,UEINT) + rho_out * e_src
+print*, "up e4", state(i,j,k,UEINT) + rhoe_src
 end if 
                 if(s_comp .ge. 10) then
 

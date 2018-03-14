@@ -1198,7 +1198,7 @@ enddo
 
       use amrex_fort_module, only : rt => amrex_real
       use bl_constants_module
-      use meth_params_module, only : difmag, NVAR, URHO, UMX, UMZ, &
+      use meth_params_module, only : difmag, NVAR, URHO, UMX, UMY, UMZ, &
            UEDEN, UEINT, UFS, normalize_species, gamma_minus_1
       use vode_aux_module    , only: i_point, j_point, k_point
 
@@ -1371,7 +1371,7 @@ enddo
          enddo
       enddo
 
-      if (sdc_split .gt. 1e-2) then
+      if (sdc_split .gt. 1e-2 .or. .true.) then
 !         print*,'creating src terms in consup'
          do n = 1, NVAR
 
@@ -1421,6 +1421,12 @@ enddo
 
                         ! (A_rho E)
                      else if (n .eq. UEDEN) then
+
+                        if ( ((ABS(i-i_point) .lt. print_radius  .and. &
+                             ABS(j-j_point).lt.print_radius .and. ABS(k-k_point).lt.print_radius )) ) then
+                           print*, "UEDEN", n
+                        end if
+
                         src(i,j,k,n) = &
                                ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
                              +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
@@ -1438,11 +1444,13 @@ enddo
                            print*, "Ce_in~:", uin(i,j,k,n)
                            print*, "Ce_out~:", uout(i,j,k,n)
                            print*, "Ce_src~:", src(i,j,k,n)
+                           print*, "UEINT", n
+                           print*, "src(UEDEN)",src(i,j,k,UEDEN)
                         end if
                         src(i,j,k,n) = a_oldsq * uin(i,j,k,UEDEN) &
                              -( (uin(i,j,k,UMX) * a_old +dt * src(i,j,k,UMX) * a_new)**2 &
-                             +  (uin(i,j,k,UMX) * a_old +dt * src(i,j,k,UMX) * a_new)**2 &
-                             +  (uin(i,j,k,UMX) * a_old +dt * src(i,j,k,UMX) * a_new)**2 ) &
+                             +  (uin(i,j,k,UMY) * a_old +dt * src(i,j,k,UMY) * a_new)**2 &
+                             +  (uin(i,j,k,UMZ) * a_old +dt * src(i,j,k,UMZ) * a_new)**2 ) &
                              / (2*uin(i,j,k,URHO)+dt*src(i,j,k,URHO) )&
 !                             + ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
 !                             +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
@@ -1453,10 +1461,37 @@ enddo
 
                         src(i,j,k,n) = src(i,j,k,n) * a_newsq_inv + dt * src(i,j,k,UEDEN)
 
+                        if ( ((ABS(i-i_point) .lt. print_radius  .and. &
+                             ABS(j-j_point).lt.print_radius .and. ABS(k-k_point).lt.print_radius )) ) then
+                           print*, "Ce_in~:", uin(i,j,k,n)
+                           print*, "Ce_out~:", uout(i,j,k,n)
+                           print*, "Ce_src~:", src(i,j,k,n)
+                           print*, "UEINT", n
+                           print*, "src(UEINT)",src(i,j,k,UEINT)
+                        end if
+
+                        src(i,j,k,n) = &
+                               ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
+                             +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
+                             +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * a_half * volinv &
+                             +   a_half * (a_new - a_old) * ( TWO - THREE * gamma_minus_1) * uin(i,j,k,UEINT)                              
+                        src(i,j,k,n) = src(i,j,k,n) * a_newsq_inv
+                        if ( ((ABS(i-i_point) .lt. print_radius  .and. &
+                             ABS(j-j_point).lt.print_radius .and. ABS(k-k_point).lt.print_radius )) ) then
+                           print*, "Ce_in~:", uin(i,j,k,n)
+                           print*, "Ce_out~:", uout(i,j,k,n)
+                           print*, "Ce_src~:", src(i,j,k,n)
+                           print*, "UEINT", n
+                           print*, "src(UEINT)",src(i,j,k,UEINT)
+                           print*, "comparitive src",  + ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
+                             +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
+                             +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * a_half * volinv 
+                        end if
                         !! Store dtA_e in UMX
                         src(i,j,k,UMX) = (uin(i,j,k,UEINT) * a_oldsq + dt * src(i,j,k,UEINT) *a_newsq) &
                                          / (uin(i,j,k,URHO) + dt * src(i,j,k,URHO)) &
                                          - (uin(i,j,k,UEINT) * a_oldsq )/ (uin(i,j,k,URHO) * a_oldsq )
+                        src(i,j,k,UMX) = src(i,j,k,UMX)*a_newsq_inv
                         ! (rho X_i) and (rho adv_i) and (rho aux_i)
 !                     else
 !                        src(i,j,k,n) = uin(i,j,k,n) + &
@@ -1469,6 +1504,8 @@ enddo
                            print*, "Ce_in~:", uin(i,j,k,n)
                            print*, "Ce_out~:", uout(i,j,k,n)
                            print*, "Ce_src~:", src(i,j,k,n)
+                           print*, "src(UMX)",src(i,j,k,UMX)
+                           print*, "src(UEDEN)",src(i,j,k,UEDEN)
                         end if
                      endif
 
