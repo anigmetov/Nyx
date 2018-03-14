@@ -75,6 +75,10 @@
     j_point = 8
     k_point = 49
 
+    i_point = 3
+    j_point = 3
+    k_point = 0
+
 !    i_point = 15
 !    j_point = 0
 !    k_point = 8
@@ -1490,7 +1494,7 @@ enddo
                         !! Store dtA_e in UMX
                         src(i,j,k,UMX) = (uin(i,j,k,UEINT) * a_oldsq + dt * src(i,j,k,UEINT) *a_newsq) &
                                          / (uin(i,j,k,URHO) + dt * src(i,j,k,URHO)) &
-                                         - (uin(i,j,k,UEINT) * a_oldsq )/ (uin(i,j,k,URHO) * a_oldsq )
+                                         - (uin(i,j,k,UEINT) * a_oldsq )/ (uin(i,j,k,URHO))
                         src(i,j,k,UMX) = src(i,j,k,UMX)*a_newsq_inv
                         ! (rho X_i) and (rho adv_i) and (rho aux_i)
 !                     else

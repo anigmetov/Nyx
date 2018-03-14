@@ -76,6 +76,9 @@ subroutine integrate_state_vode(lo, hi, &
     i_point = 1
     j_point = 8
     k_point = 49
+    i_point = 3
+    j_point = 3
+    k_point = 0
 !    i_point = 15
 !    j_point = 0
 !    k_point = 8
@@ -193,15 +196,17 @@ end if
                    e_orig=e_out
                    call vode_wrapper_split(.5*half_dt,rho,T_orig,ne_orig,e_orig, &
                         rho_out, T_out ,ne_out ,e_out, fn_out, rho_src, e_src)
-                   else
+                   elseif(.TRUE.) then
                    call vode_wrapper_split(half_dt,rho,T_orig,ne_orig,e_orig, &
                         rho_out, T_out ,ne_out ,e_out, fn_out, rho_src, e_src)
+                   e_out = a * e_orig *  rho / rho_out / a_end
                    end if
                 else
                    call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
                         T_out ,ne_out ,e_out, fn_out)
+                   e_out = e_orig
                 end if
-                e_out = e_orig
+
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
@@ -240,7 +245,7 @@ end if
                 endif
 
                 ! putting this here as well as immediately after the wrapper calls seems to have no effect
-                e_out = e_orig
+
 !               print*, "rho_in = ",rho
 !               print*, "e_in = ",e_orig
 !               print*, "rho_out = ",rho_out
@@ -260,6 +265,7 @@ print*, "up e1", rho_out * e_out
 print*, "up e2", state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
 print*, "up e3", state(i,j,k,UEINT) + rho_out * e_src
 print*, "up e4", state(i,j,k,UEINT) + rhoe_src
+print*, "Comparitive I_R", (a_end* (state(i,j,k,URHO)+src(i,j,k,URHO)) *e_out- (a*rho* e_orig))
 end if 
                 if(s_comp .ge. 10) then
 
@@ -276,6 +282,14 @@ end if
                 diag_eos(i,j,k, DIAG2_COMP) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
 !                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
 
+                state(i,j,k,UEINT) = state(i,j,k,URHO)*e_out
+
+                ! Store I_R
+                diag_eos(i,j,k, DIAG1_COMP) = (a_end* state(i,j,k,URHO) *e_out-&
+                     (a*rho* e_orig + a_end*a_end*half_dt*src(i,j,k,UEINT)))
+                src(i,j,k,UEINT) = diag_eos(i,j,k,DIAG1_COMP)
+                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + src(i,j,k,UEINT)
+                
 if(.TRUE.) then
 !!!                state(i,j,k,UEINT) = a*a*state(i,j,k,UEINT) +  src(i,j,k,UEINT)
 !!!                state(i,j,k,UEDEN) = a*a*state(i,j,k,UEDEN) +  src(i,j,k,UEDEN)
@@ -294,7 +308,7 @@ else
                 src(i,j,k,UEINT) = diag_eos(i,j,k,DIAG1_COMP)
                 
                 ! Use I_R to update rhoE
-                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) +  src(i,j,k,UEDEN)
+                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) +  src(i,j,k,UEDEN) - src(i,j,k,UEINT)
 
 endif
 
@@ -362,7 +376,7 @@ end if
 print*, "EUINT", state(i,j,k,UEINT)
 print*, "EUDEN", state(i,j,k,UEDEN)
 print*, "src", src(i,j,k,UEINT)
-print*, "up E", state(i,j,k,UEDEN) + diag_eos(i,j,k,DIAG1_COMP)
+print*, "up E", state(i,j,k,UEDEN) + src(i,j,k,UEDEN)
 print*, "up e1", rho_out * e_out
 print*, "up e2", state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
 end if 
