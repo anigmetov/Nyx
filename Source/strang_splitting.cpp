@@ -6,7 +6,7 @@ using namespace amrex;
 using std::string;
 
 void
-Nyx::strang_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old)
+Nyx::strang_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, MultiFab& S_src)
 {
     BL_PROFILE("Nyx::strang_first_step()");
     Real half_dt = 0.5*dt;
@@ -39,7 +39,7 @@ Nyx::strang_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old)
                 (bx.loVect(), bx.hiVect(), 
                  BL_TO_FORTRAN(S_old[mfi]),
                  BL_TO_FORTRAN(D_old[mfi]),
-                 BL_TO_FORTRAN(S_old[mfi]),
+                 BL_TO_FORTRAN(S_src[mfi]),
                  dx, &time, &a, &half_dt, &min_iter, &max_iter, &strang_comp);
 
 #ifndef NDEBUG
@@ -55,7 +55,7 @@ Nyx::strang_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old)
 }
 
 void
-Nyx::strang_second_step (Real time, Real dt, MultiFab& S_new, MultiFab& D_new)
+Nyx::strang_second_step (Real time, Real dt, MultiFab& S_new, MultiFab& D_new, MultiFab& S_src)
 {
     BL_PROFILE("Nyx::strang_second_step()");
     Real half_dt = 0.5*dt;
@@ -96,7 +96,7 @@ Nyx::strang_second_step (Real time, Real dt, MultiFab& S_new, MultiFab& D_new)
             (bx.loVect(), bx.hiVect(), 
              BL_TO_FORTRAN(S_new[mfi]),
              BL_TO_FORTRAN(D_new[mfi]),
-	     BL_TO_FORTRAN(S_new[mfi]),
+	     BL_TO_FORTRAN(S_src[mfi]),
              dx, &time, &a, &half_dt, &min_iter_grid, &max_iter_grid,&strang_comp);
 
         if (S_new[mfi].contains_nan(bx,0,S_new.nComp()))

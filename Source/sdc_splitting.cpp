@@ -60,7 +60,7 @@ Nyx::sdc_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, Multi
     BL_PROFILE("Nyx::sdc_first_step()");
     Real half_dt = 0.5*dt;
 
-    const Real a = get_comoving_a(time);
+    const Real a = get_comoving_a(time+dt);
     const Real* dx = geom.CellSize();
     
 #ifndef FORCING
@@ -70,8 +70,8 @@ Nyx::sdc_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, Multi
     }
 #endif
 
-    //    if(strang_comp>11)
-    //      compute_new_temp();
+        if(strang_comp>11)
+          compute_new_temp();
     
 #ifdef _OPENMP
 #pragma omp parallel
@@ -81,7 +81,8 @@ Nyx::sdc_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, Multi
     for (MFIter mfi(S_old,true); mfi.isValid(); ++mfi)
     {
         // Note that this "bx" is only the valid region (unlike for Strang)
-        const Box& bx = mfi.tilebox();
+      const Box& bx = mfi.tilebox();
+      //      const Box& bx = mfi.growntilebox(D_old.nGrow());
 
         int  min_iter = 100000;
         int  max_iter =      0;

@@ -16,6 +16,7 @@
       use reion_aux_module,    only: zhi_flash, zheii_flash, flash_h, flash_he, &
                                      inhomogeneous_on
       use  eos_params_module
+      use vode_aux_module,     only: i_point,j_point,k_point
 
       implicit none
       integer         , intent(in   ) :: lo(3),hi(3)
@@ -93,7 +94,11 @@
                    state(i,j,k,UEDEN) = state(i,j,k,UEINT) + ke
 
                end if
-
+           if ( ((ABS(i-i_point) .lt. 1  .and. &
+                ABS(j-j_point).lt.1 .and. ABS(k-k_point).lt.1 )) ) then
+              print*, "end of compute_temp u(i,j,k,UEINT)", state(i,j,k,UEINT)
+              print*, "end of compute_temp u(i,j,k,UEDEN)", state(i,j,k,UEDEN)
+           end if
             enddo
          enddo
       enddo

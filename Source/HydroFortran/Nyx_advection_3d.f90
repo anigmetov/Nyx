@@ -20,7 +20,7 @@
 
       use amrex_fort_module, only : rt => amrex_real
       use mempool_module, only : bl_allocate, bl_deallocate
-      use meth_params_module, only : QVAR, NVAR, NHYP, normalize_species, URHO
+      use meth_params_module, only : QVAR, NVAR, NHYP, normalize_species, URHO, UEINT, UEDEN
       use enforce_module, only : enforce_nonnegative_species
       use bl_constants_module
       use vode_aux_module, only : i_point,j_point,k_point
@@ -79,6 +79,13 @@
     j_point = 3
     k_point = 0
 
+    i_point = 32
+    j_point = 20
+    k_point = 18
+
+    i_point = 57
+    j_point = 2
+    k_point = 17
 !    i_point = 15
 !    j_point = 0
 !    k_point = 8
@@ -190,13 +197,17 @@
                   do i = lo(1),hi(1)
                         if ( ((ABS(i-i_point) .lt. 1  .and. &
                              ABS(j-j_point).lt.1 .and. ABS(k-k_point).lt.1 )) ) then
-      print*, "Drho_in~:", uin(i_point,j_point,k_point,URHO)
-      print*, "Drho_out~:", uout(i_point,j_point,k_point,URHO)
-      print*, "Drho_src~:", src(i_point,j_point,k_point,URHO)
-   end if
-enddo
-enddo
-enddo
+                           print*, "Drho_in~:", uin(i_point,j_point,k_point,URHO)
+                           print*, "Drho_out~:", uout(i_point,j_point,k_point,URHO)
+                           print*, "Drho_src~:", src(i_point,j_point,k_point,URHO)
+                           print*, "end of fort_advance src(i,j,k,UEDEN)", src(i,j,k,UEDEN)
+                           print*, "uin(i,j,k,UEINT)", uin(i,j,k,UEINT)
+                           print*, "uin(i,j,k,UEDEN)", uin(i,j,k,UEDEN)
+                           print*, "uout(i,j,k,UEDEN)", uout(i,j,k,UEDEN)
+                        end if
+                     enddo
+                  enddo
+               enddo
       end subroutine fort_advance_gas
 
 
@@ -1290,6 +1301,7 @@ enddo
       dt_a_new    = dt / a_new
       a_newsq_inv = ONE / a_newsq
 
+      print_radius = 1
 
       do n = 1, NVAR
 
@@ -1329,7 +1341,13 @@ enddo
                           +   a_half * dt * src(i,j,k,n)  &
                           +   a_half * (a_new - a_old) * ( TWO - THREE * gamma_minus_1) * uin(i,j,k,UEINT)
                      uout(i,j,k,n) = uout(i,j,k,n) * a_newsq_inv
-
+                     if ( ((ABS(i-i_point) .lt. print_radius  .and. &
+                          ABS(j-j_point).lt.print_radius .and. ABS(k-k_point).lt.print_radius )) ) then
+                        print*, "src(i,j,k,UEDEN)", src(i,j,k,UEDEN)
+                        print*, "uin(i,j,k,UEINT)", uin(i,j,k,UEINT)
+                        print*, "uin(i,j,k,UEDEN)", uin(i,j,k,UEDEN)
+                        print*, "uout(i,j,k,UEDEN)", uout(i,j,k,UEDEN)
+                     end if
                      ! (rho e)
                   else if (n .eq. UEINT) then
 
@@ -1398,7 +1416,6 @@ enddo
                              +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * volinv &
 !                             +   dt * src(i,j,k,n)
                              ) * a_half_inv
-                        print_radius = 1
                         if ( ((ABS(i-i_point) .lt. print_radius  .and. &
                              ABS(j-j_point).lt.print_radius .and. ABS(k-k_point).lt.print_radius )) ) then
                            print*, "Crho_in~:", uin(i,j,k,URHO)

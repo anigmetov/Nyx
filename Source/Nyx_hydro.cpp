@@ -145,9 +145,9 @@ Nyx::just_the_hydro (Real time,
     // Output variables into temporary containers
     //
     if (add_ext_src && strang_split) 
-        strang_first_step(time,dt,S_old_tmp,D_old_tmp);
+      strang_first_step(time,dt,S_old_tmp,D_old_tmp,ext_src_old);
 
-
+    ext_src_old.setVal(0);
     //
     // Gives us I^0 from integration, will add using previous I later
     // Stores I^0 in D_old_tmp(diag_comp)
@@ -346,7 +346,7 @@ Nyx::just_the_hydro (Real time,
     // second strang
     // This returns updated (rho e), (rho E), and Temperature
     if (add_ext_src && strang_split)
-        strang_second_step(cur_time,dt,S_new,D_new);
+      strang_second_step(cur_time,dt,S_new,D_new,ext_src_old);
     printf("time at iter after second strang: %i\t%g\n", 0,time);
 #ifndef NDEBUG
     if (S_new.contains_nan(Density, S_new.nComp(), 0))

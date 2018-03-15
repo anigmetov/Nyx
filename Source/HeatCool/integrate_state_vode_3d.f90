@@ -79,10 +79,20 @@ subroutine integrate_state_vode(lo, hi, &
     i_point = 3
     j_point = 3
     k_point = 0
+    i_point = 32
+    j_point = 20
+    k_point = 18
+    i_point = 57
+    j_point = 2
+    k_point = 17
 !    i_point = 15
 !    j_point = 0
 !    k_point = 8
 end if
+
+print*, "i,j,k",i_point,j_point,k_point
+print*, "lower", lo
+print*, "higher", hi
 !    STRANG_COMP=SFNR_COMP+s_comp
 
 !!!!! Writing to first componenet spot first automatically, to keep o
@@ -182,6 +192,10 @@ end if
     if(s_comp .ge.10 .or. .TRUE.)    print*, "rho~:", state(i,j,k,URHO)+src(i,j,k,URHO) 
     if(s_comp .ge.10 .or. .TRUE.)    print*, "rho_in~:", state(i,j,k,URHO)
     if(s_comp .ge.10 .or. .TRUE.)    print*, "rho_src~:", src(i,j,k,URHO)
+                           print*, "src(i,j,k,UEDEN)", src(i,j,k,UEDEN)
+                           print*, "uin(i,j,k,UEINT)", state(i,j,k,UEINT)
+                           print*, "uin(i,j,k,UEDEN)", state(i,j,k,UEDEN)
+!                           print*, "uout(i,j,k,UEDEN)", uout(i,j,k,UEDEN)
                 end if
 
                 if(s_comp .ge. 10) then
@@ -207,6 +221,23 @@ end if
                    e_out = e_orig
                 end if
 
+                print_radius = 1
+                if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
+                     ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  &
+                     !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
+                     !           ((i_vode .eq. 33 .and. j_vode.eq.45.and. k_vode.eq.22) ) .or. &
+                     .and. .not. ((ABS(i_vode-28) .lt. print_radius  .and. &
+                     ABS(j_vode-21).lt.print_radius .and. ABS(k_vode-25).lt.print_radius )) )then
+                   FMT="(A6,I1,/,ES21.15,/,ES21.15E2,/,ES21.15,/,ES21.15,/,ES21.15,/,ES21.15,/,ES21.15)"
+                   print(FMT), "IntSta",STRANG_COMP, a, half_dt, rho, T_orig, ne_orig, e_orig
+    if(s_comp .ge.10 .or. .TRUE.)    print*, "rho~:", state(i,j,k,URHO)+src(i,j,k,URHO) 
+    if(s_comp .ge.10 .or. .TRUE.)    print*, "rho_in~:", state(i,j,k,URHO)
+    if(s_comp .ge.10 .or. .TRUE.)    print*, "rho_src~:", src(i,j,k,URHO)
+                           print*, "src(i,j,k,UEDEN)", src(i,j,k,UEDEN)
+                           print*, "uin(i,j,k,UEINT)", state(i,j,k,UEINT)
+                           print*, "uin(i,j,k,UEDEN)", state(i,j,k,UEDEN)
+!                           print*, "uout(i,j,k,UEDEN)", uout(i,j,k,UEDEN)
+                end if
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
@@ -286,7 +317,9 @@ end if
 
                 ! Store I_R
                 diag_eos(i,j,k, DIAG1_COMP) = (a_end* state(i,j,k,URHO) *e_out-&
-                     (a*rho* e_orig + a_end*a_end*half_dt*src(i,j,k,UEINT)))
+                     (a*rho* e_orig + a_end*a_end*half_dt*src(i,j,k,UEINT))) & 
+!!! consider adding neglected A_e source term here
+                     + a_end*a_end*half_dt*e_src
                 src(i,j,k,UEINT) = diag_eos(i,j,k,DIAG1_COMP)
                 state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + src(i,j,k,UEINT)
                 

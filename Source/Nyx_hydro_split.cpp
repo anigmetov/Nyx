@@ -144,7 +144,7 @@ Nyx::just_the_hydro_split (Real time,
 */
 
     //Begin loop over SDC iterations
-
+	    printf("BL_SPACEDIM: %i",BL_SPACEDIM);
     FArrayBox flux[BL_SPACEDIM], u_gdnv[BL_SPACEDIM];
 
     int sdc_iter_max = 2;
@@ -158,16 +158,16 @@ Nyx::just_the_hydro_split (Real time,
        //Done above with Copy, or at the end of the loop inside iterate by updating src
 
        // OPENMP loop over fort_advance_gas "advection"
-      /*
+      
 #ifdef _OPENMP
 #pragma omp parallel reduction(max:courno) reduction(+:e_added,ke_added)
-#endif*/
+#endif
           {
           Real cflLoc = -1.e+200;
 
           for (MFIter mfi(S_old_tmp,true); mfi.isValid(); ++mfi)
           {
-             const Box& bx        = mfi.tilebox();
+	    const Box& bx        = mfi.tilebox();
 
              // Allocate fabs for fluxes.
              for (int i = 0; i < BL_SPACEDIM ; i++) {
@@ -280,12 +280,12 @@ Nyx::just_the_hydro_split (Real time,
 	  //	  MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
 	  //MultiFab::Copy(D_new,D_old,Temp_comp,Temp_comp,1,0);
 	}
-	 S_old_tmp2.setVal(0);
+	/*	 S_old_tmp2.setVal(0);
 	 S_old_tmp2.minus(S_old_tmp,0,S_old_tmp.nComp(),4);
 	 S_old_tmp2.plus(S_old,0,S_old_tmp.nComp(),4);
 	    printf("acCompare %g\n", S_old_tmp.norm0(Density));
 	    printf("ac2-norm plus minus %g\n", S_old_tmp2.norm2(Density));
-	    printf("acCompare %2.15g\n", S_old.norm2(Density));
+	    printf("acCompare %2.15g\n", S_old.norm2(Density));*/
 
     }
     //End loop over SDC iterations

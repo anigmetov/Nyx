@@ -9,6 +9,7 @@
       use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, small_temp, &
                                      NDIAG, NE_COMP
       use  eos_params_module
+      use vode_aux_module, only: i_point, j_point, k_point
 
       implicit none
 
@@ -78,6 +79,12 @@
            end if
 
            sum_energy_total = sum_energy_total + u(i,j,k,UEDEN)
+
+           if ( ((ABS(i-i_point) .lt. 1  .and. &
+                ABS(j-j_point).lt.1 .and. ABS(k-k_point).lt.1 )) ) then
+              print*, "end of reset_internal u(i,j,k,UEINT)", u(i,j,k,UEINT)
+              print*, "end of reset_internal u(i,j,k,UEDEN)", u(i,j,k,UEDEN)
+           end if
 
       enddo
       enddo
