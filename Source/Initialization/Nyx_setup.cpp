@@ -199,14 +199,25 @@ Nyx::hydro_setup()
 
     int NDIAG_C;
     Temp_comp = 0;
-      Ne_comp = 1;
+    Ne_comp = 1;
     if (inhomo_reion > 0)
-    {
-        NDIAG_C  = 3;
+      {
+        NDIAG_C  = 7;
         Zhi_comp = 2;
-    } else {
-        NDIAG_C  = 2;
+        Sfnr_comp = 3;
+        Ssnr_comp = 4;
+        Diag1_comp = 5;
+        Diag2_comp = 6;
+      } else {
+      NDIAG_C  = 6;
+      Sfnr_comp = 2;
+      Ssnr_comp = 3;
+      Diag1_comp = 4;
+      Diag2_comp = 5;
     }
+
+    // Add extra diag variable                                                                  
+    NDIAG_C = NDIAG_C+1;
 
     int dm = BL_SPACEDIM;
 
@@ -396,7 +407,26 @@ Nyx::hydro_setup()
     if (inhomo_reion > 0) {
        desc_lst.setComponent(DiagEOS_Type, 2, "Z_HI", bc,
                              BndryFunc(generic_fill));
+       desc_lst.setComponent(DiagEOS_Type, 3, "SFNR", bc,
+                          BndryFunc(generic_fill));
+       desc_lst.setComponent(DiagEOS_Type, 4, "SSNR", bc,
+                          BndryFunc(generic_fill));
+       desc_lst.setComponent(DiagEOS_Type, 5, "DIAG1", bc,
+                          BndryFunc(generic_fill));
+       desc_lst.setComponent(DiagEOS_Type, 6, "DIAG2", bc,
+                          BndryFunc(generic_fill));
     }
+    else
+      {
+    desc_lst.setComponent(DiagEOS_Type, 2, "SFNR", bc,
+                          BndryFunc(generic_fill));
+    desc_lst.setComponent(DiagEOS_Type, 3, "SSNR", bc,
+                          BndryFunc(generic_fill));
+       desc_lst.setComponent(DiagEOS_Type, 4, "DIAG1", bc,
+                          BndryFunc(generic_fill));
+       desc_lst.setComponent(DiagEOS_Type, 5, "DIAG2", bc,
+                          BndryFunc(generic_fill));
+      }
 
 #ifdef GRAVITY
     if (do_grav)

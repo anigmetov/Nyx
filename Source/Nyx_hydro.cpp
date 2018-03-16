@@ -20,6 +20,7 @@ Nyx::just_the_hydro (Real time,
 {
     BL_PROFILE("Nyx::just_the_hydro()");
 
+    //    int sdc_split = 0;
     const Real prev_time    = state[State_Type].prevTime();
     const Real cur_time     = state[State_Type].curTime();
     const int  finest_level = parent->finestLevel();
@@ -77,8 +78,11 @@ Nyx::just_the_hydro (Real time,
     const Real* dx     = geom.CellSize();
     Real        courno = -1.0e+200;
 
-    MultiFab ext_src_old(grids, dmap, NUM_STATE, 3);
+    MultiFab ext_src_old(grids, dmap, NUM_STATE, 4);
     ext_src_old.setVal(0);
+
+    //    MultiFab ext_src_tmp(grids, dmap, NUM_STATE, 3);
+    //    ext_src_old.setVal(0);
 
     if (add_ext_src && ParallelDescriptor::IOProcessor())
     {
@@ -99,7 +103,7 @@ Nyx::just_the_hydro (Real time,
     }
 
     // Define the gravity vector so we can pass this to ca_umdrv.
-    MultiFab grav_vector(grids, dmap, BL_SPACEDIM, 3);
+    MultiFab grav_vector(grids, dmap, BL_SPACEDIM, 4);
     grav_vector.setVal(0.);
 
 #ifdef GRAVITY
@@ -127,7 +131,7 @@ Nyx::just_the_hydro (Real time,
     FillPatch(*this, D_old_tmp, NUM_GROW, time, DiagEOS_Type, 0, D_old.nComp());
 
     if (add_ext_src && strang_split) 
-        strang_first_step(time,dt,S_old_tmp,D_old_tmp);
+      strang_first_step(time,dt,S_old_tmp,D_old_tmp,ext_src_old);
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(max:courno) reduction(+:e_added,ke_added)
@@ -173,7 +177,7 @@ Nyx::just_the_hydro (Real time,
              BL_TO_FORTRAN(flux[0]),
              BL_TO_FORTRAN(flux[1]),
              BL_TO_FORTRAN(flux[2]),
-             &cflLoc, &a_old, &a_new, &se, &ske, &print_fortran_warnings, &do_grav);
+             &cflLoc, &a_old, &a_new, &se, &ske, &print_fortran_warnings, &do_grav, &sdc_split);
 
         for (int i = 0; i < BL_SPACEDIM; ++i) {
           fluxes[i][mfi].copy(flux[i], mfi.nodaltilebox(i));
@@ -290,7 +294,7 @@ Nyx::just_the_hydro (Real time,
 
     // This returns updated (rho e), (rho E), and Temperature
     if (add_ext_src && strang_split)
-        strang_second_step(cur_time,dt,S_new,D_new);
+      strang_second_step(cur_time,dt,S_new,D_new,ext_src_old);
 
 #ifndef NDEBUG
     if (S_new.contains_nan(Density, S_new.nComp(), 0))

@@ -1,7 +1,8 @@
 subroutine integrate_state_vode(lo, hi, &
                                 state   , s_l1, s_l2, s_l3, s_h1, s_h2, s_h3, &
                                 diag_eos, d_l1, d_l2, d_l3, d_h1, d_h2, d_h3, &
-                                a, half_dt, min_iter, max_iter)
+                                src, src_l1, src_l2, src_l3, src_h1, src_h2, src_h3, &
+                                a, half_dt, min_iter, max_iter, sdc_split)
 !
 !   Calculates the sources to be added later on.
 !
@@ -31,7 +32,7 @@ subroutine integrate_state_vode(lo, hi, &
 !
     use amrex_fort_module, only : rt => amrex_real
     use meth_params_module, only : NVAR, URHO, UEDEN, UEINT, &
-                                   NDIAG, TEMP_COMP, NE_COMP, ZHI_COMP, gamma_minus_1
+                                   NDIAG, TEMP_COMP, NE_COMP, ZHI_COMP, gamma_minus_1, DIAG1_COMP
     use bl_constants_module, only: M_PI
     use eos_params_module
     use network
@@ -49,15 +50,18 @@ subroutine integrate_state_vode(lo, hi, &
     integer         , intent(in) :: lo(3), hi(3)
     integer         , intent(in) :: s_l1, s_l2, s_l3, s_h1, s_h2, s_h3
     integer         , intent(in) :: d_l1, d_l2, d_l3, d_h1, d_h2, d_h3
+    integer         , intent(in) :: src_l1, src_l2, src_l3, src_h1, src_h2, src_h3
     real(rt), intent(inout) ::    state(s_l1:s_h1, s_l2:s_h2,s_l3:s_h3, NVAR)
     real(rt), intent(inout) :: diag_eos(d_l1:d_h1, d_l2:d_h2,d_l3:d_h3, NDIAG)
+    real(rt), intent(inout) ::    src(src_l1:src_h1, src_l2:src_h2,src_l3:src_h3, NVAR)
     real(rt), intent(in)    :: a, half_dt
     integer         , intent(inout) :: max_iter, min_iter
 
-    integer :: i, j, k
+    integer :: i, j, k, sdc_split
     real(rt) :: z, z_end, a_end, rho, H_reion_z, He_reion_z
     real(rt) :: T_orig, ne_orig, e_orig
-    real(rt) :: T_out , ne_out , e_out, mu, mean_rhob, T_H, T_He
+    real(rt) :: rho_out, T_out , ne_out , e_out, rho_src, e_src
+    real(rt) :: mu, mean_rhob, T_H, T_He
     real(rt) :: species(5)
 
     z = 1.d0/a - 1.d0
@@ -94,6 +98,10 @@ subroutine integrate_state_vode(lo, hi, &
                 e_orig  = state(i,j,k,UEINT) / rho
                 T_orig  = diag_eos(i,j,k,TEMP_COMP)
                 ne_orig = diag_eos(i,j,k,  NE_COMP)
+                rho_src = 0.d0
+                e_src   = 0.d0
+                rho_src = src(i,j,k,URHO)
+                e_src   = src(i,j,k,UEINT)
 
                 if (inhomogeneous_on) then
                    H_reion_z = diag_eos(i,j,k,ZHI_COMP)
@@ -116,7 +124,7 @@ subroutine integrate_state_vode(lo, hi, &
                 k_vode = k
 
                 call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
-                                              T_out ,ne_out ,e_out)
+                                         rho_out,T_out ,ne_out ,e_out, rho_src, e_src)
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
@@ -153,6 +161,18 @@ subroutine integrate_state_vode(lo, hi, &
                    call nyx_eos_T_given_Re(JH_vode, JHe_vode, T_out, ne_out, rho, e_out, a, species)
                 endif
 
+                if(sdc_split .ge. 1e-2) then
+                   state(i,j,k,URHO) = state(i,j,k,URHO)+src(i,j,k,URHO)
+                   ! Store I_R                                                                     
+                diag_eos(i,j,k, DIAG1_COMP) = (a_end* state(i,j,k,URHO) *e_out-&
+                     (a*rho* e_orig + a_end*a_end*half_dt*src(i,j,k,UEINT))) !&
+!!! consider adding neglected A_e source term here                                              
+!!!                     + a_end*a_end*half_dt*e_src
+                src(i,j,k,UEINT) = diag_eos(i,j,k,DIAG1_COMP)
+
+                end if
+                
+                if(i.eq.1 .and. j.eq.8 .and. k.eq.49) print*, "rho_State(1,8,49) = ", state(i,j,k,URHO)
                 ! Update (rho e) and (rho E)
                 state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho * (e_out-e_orig)
                 state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + rho * (e_out-e_orig)
@@ -168,7 +188,7 @@ subroutine integrate_state_vode(lo, hi, &
 end subroutine integrate_state_vode
 
 
-subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out)
+subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, rho_out, T_out, ne_out, e_out, rho_src, e_src)
 
     use amrex_fort_module, only : rt => amrex_real
     use vode_aux_module, only: rho_vode, T_vode, ne_vode, &
@@ -178,7 +198,8 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out)
 
     real(rt), intent(in   ) :: dt
     real(rt), intent(in   ) :: rho_in, T_in, ne_in, e_in
-    real(rt), intent(  out) ::         T_out,ne_out,e_out
+    real(rt), intent(  out) :: rho_out, T_out,ne_out,e_out
+    real(rt), intent(in   ) :: rho_src, e_src
 
     ! Set the number of independent variables -- this should be just "e"
     integer, parameter :: NEQ = 1
@@ -267,9 +288,11 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out)
                istate, IOPT, rwork, LRW, iwork, LIW, jac, MF_NUMERICAL_JAC, &
                rpar, ipar)
 
-    e_out  = y(1)
+    e_out  = y(1) + e_src
     T_out  = T_vode
     ne_out = ne_vode
+!    e_out  = e_in + e_src
+    rho_out = rho_in + rho_src
 
     if (istate < 0) then
        print *, 'istate = ', istate, 'at (i,j,k) ',i_vode,j_vode,k_vode

@@ -381,8 +381,13 @@ public:
     amrex::Real advance_hydro_plus_particles(amrex::Real time, amrex::Real dt, int iteration,
                                       int ncycle);
     void just_the_hydro(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
-    void strang_first_step  (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate);
-    void strang_second_step (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate);
+
+    void just_the_hydro_sdc(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
+
+    void strang_first_step  (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate, amrex::MultiFab&  srcstate);
+    void strang_second_step (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate, amrex::MultiFab&  srcstate);
+
+  void sdc_reaction_step  (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate, amrex::MultiFab&  srcstate, int sdc_iter);
 
     amrex::Real advance_particles_only (amrex::Real time, amrex::Real dt, int iteration, int ncycle);
 
@@ -534,7 +539,7 @@ public:
     static int NUM_STATE;
     static int Density, Xmom, Ymom, Zmom, Eden, Eint;
 
-    static int Temp_comp, Ne_comp, Zhi_comp;
+    static int Temp_comp, Ne_comp, Zhi_comp, Sfnr_comp, Ssnr_comp, Diag1_comp, Diag2_comp;
 
     static int FirstSpec, FirstAux, FirstAdv;
     static int NumSpec, NumAux, NumAdv;
@@ -712,6 +717,9 @@ protected:
     // if true , incorporate the source term through Strang-splitting
     // if false, incorporate the source term through predictor-corrector methodology
     static int strang_split;
+  
+    // if true, incorporate the source term through sdc-splitting                               
+    static int sdc_split;
 
 #ifdef GRAVITY
     // There can be only one Gravity object, it covers all levels:

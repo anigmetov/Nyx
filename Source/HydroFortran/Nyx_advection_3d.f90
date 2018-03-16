@@ -15,7 +15,7 @@
            flux1,flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3, &
            flux2,flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3, &
            flux3,flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3, &
-           courno,a_old,a_new,e_added,ke_added,print_fortran_warnings,do_grav) &
+           courno,a_old,a_new,e_added,ke_added,print_fortran_warnings,do_grav, sdc_split) &
            bind(C, name="fort_advance_gas")
 
       use amrex_fort_module, only : rt => amrex_real
@@ -37,6 +37,7 @@
       integer flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3
       integer src_l1,src_l2,src_l3,src_h1,src_h2,src_h3
       integer gv_l1,gv_l2,gv_l3,gv_h1,gv_h2,gv_h3
+      integer sdc_split
       real(rt)   uin(  uin_l1:uin_h1,    uin_l2:uin_h2,     uin_l3:uin_h3,  NVAR)
       real(rt)  uout( uout_l1:uout_h1,  uout_l2:uout_h2,   uout_l3:uout_h3, NVAR)
       real(rt) ugdnvx_out(ugdnvx_l1:ugdnvx_h1,ugdnvx_l2:ugdnvx_h2,ugdnvx_l3:ugdnvx_h3)
@@ -132,7 +133,7 @@
                   flux1,flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3, &
                   flux2,flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3, &
                   flux3,flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3, &
-                  div,pdivu,lo,hi,dx,dy,dz,dt,a_old,a_new)
+                  div,pdivu,lo,hi,dx,dy,dz,dt,a_old,a_new,sdc_split)
 
       ! We are done with these here so can go ahead and free up the space.
       call bl_deallocate(q)
@@ -1165,11 +1166,11 @@
                       flux1,flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3, &
                       flux2,flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3, &
                       flux3,flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3, &
-                      div,pdivu,lo,hi,dx,dy,dz,dt,a_old,a_new)
+                      div,pdivu,lo,hi,dx,dy,dz,dt,a_old,a_new,sdc_split)
 
       use amrex_fort_module, only : rt => amrex_real
       use bl_constants_module
-      use meth_params_module, only : difmag, NVAR, URHO, UMX, UMZ, &
+      use meth_params_module, only : difmag, NVAR, URHO, UMX, UMY, UMZ, &
            UEDEN, UEINT, UFS, normalize_species, gamma_minus_1
 
       implicit none
@@ -1197,7 +1198,7 @@
       real(rt) :: area1, area2, area3
       real(rt) :: vol, volinv, a_newsq_inv
       real(rt) :: a_half_inv, a_new_inv, dt_a_new
-      integer          :: i, j, k, n
+      integer          :: i, j, k, n, sdc_split
 
       a_half  = HALF * (a_old + a_new)
       a_oldsq = a_old * a_old
@@ -1328,6 +1329,83 @@
             enddo
          enddo
       enddo
+
+
+      if (sdc_split .gt. 1e-2) then
+!         print*,'creating src terms in consup'                                                 
+          do n = 1, NVAR
+
+            ! update everything else with fluxes and source terms                               
+            do k = lo(3),hi(3)
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)
+
+! A_Density                                                                
+                     if (n .eq. URHO) then
+                        src(i,j,k,n) =  &
+                             ( ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
+                             +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
+                             +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * volinv &
+!                             +   dt * src(i,j,k,n)                                             
+                             ) * a_half_inv
+!A_Momentum                                                             
+                     else if (n .ge. UMX .and. n .le. UMZ) then
+                        src(i,j,k,n) = &
+                             + ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
+                             +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
+                             +   flux3(i,j,k,n) - flux3(i,j,k+1,n)) * volinv !&                 
+!                             +   dt * src(i,j,k,n)                                             
+                        src(i,j,k,n) = src(i,j,k,n) * a_new_inv
+
+                        ! (A_rho E)                                                             
+                     else if (n .eq. UEDEN) then
+
+                        src(i,j,k,n) = &
+                               ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
+                             +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
+                             +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * a_half * volinv !&       
+!                             +   a_half * dt * src(i,j,k,n)  &                                 
+!                             +   a_half * (a_new - a_old) * ( TWO - THREE * gamma_minus_1) * uin(i,j,k,UEINT)
+                        src(i,j,k,n) = src(i,j,k,n) * a_newsq_inv
+                       ! (dt A_rho e)                                                          
+                     else if (n .eq. UEINT) then
+
+                        src(i,j,k,n) = a_oldsq * uin(i,j,k,UEDEN) &
+                             -( (uin(i,j,k,UMX) * a_old +dt * src(i,j,k,UMX) * a_new)**2 &
+                             +  (uin(i,j,k,UMY) * a_old +dt * src(i,j,k,UMY) * a_new)**2 &
+                             +  (uin(i,j,k,UMZ) * a_old +dt * src(i,j,k,UMZ) * a_new)**2 ) &
+                             / (2*uin(i,j,k,URHO)+dt*src(i,j,k,URHO) )&
+!                             + ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &                           
+!                             +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &                           
+!                             +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * a_half * volinv &       
+!                             +   a_half * (a_new - a_old) * ( TWO - THREE * gamma_minus_1) * uin(i,j,k,UEINT) &
+!                             +   a_half * dt * src(i,j,k,n) &                                  
+                             -   a_oldsq*uin(i,j,k,n)
+
+                        src(i,j,k,n) = src(i,j,k,n) * a_newsq_inv + dt * src(i,j,k,UEDEN)
+
+
+                        src(i,j,k,n) = &
+                               ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
+                             +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
+                             +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * a_half * volinv &
+                             +   a_half * (a_new - a_old) * ( TWO - THREE * gamma_minus_1) * uin(i,j,k,UEINT)
+                        src(i,j,k,n) = src(i,j,k,n) * a_newsq_inv
+
+                        !! Store dtA_e in UMX                                                   
+                        src(i,j,k,UMX) = (uin(i,j,k,UEINT) * a_oldsq + dt * src(i,j,k,UEINT) *a_newsq) &
+                                         / (uin(i,j,k,URHO) + dt * src(i,j,k,URHO)) &
+                                         - (uin(i,j,k,UEINT) * a_oldsq )/ (uin(i,j,k,URHO))
+                        src(i,j,k,UMX) = src(i,j,k,UMX)*a_newsq_inv
+
+                     end if
+
+                  enddo
+               enddo
+            enddo
+         enddo
+
+      endif
 
       do n = 1, NVAR
          if (n .eq. URHO) then

@@ -417,6 +417,11 @@ void Nyx::initcosmo()
 
         D_new.setVal(tempInit, Temp_comp);
         D_new.setVal(0.0, Ne_comp);
+        D_new.setVal(0.0, Sfnr_comp);
+        D_new.setVal(0.0, Ssnr_comp);
+        D_new.setVal(0.0, Diag1_comp);
+        D_new.setVal(0.0, Diag2_comp);
+
         if (inhomo_reion > 0)
             D_new.setVal(0.0, Zhi_comp);
 

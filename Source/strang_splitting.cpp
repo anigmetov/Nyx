@@ -6,7 +6,7 @@ using namespace amrex;
 using std::string;
 
 void
-Nyx::strang_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old)
+Nyx::strang_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old, MultiFab& S_src)
 {
     BL_PROFILE("Nyx::strang_first_step()");
     Real half_dt = 0.5*dt;
@@ -36,7 +36,8 @@ Nyx::strang_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old)
                 (bx.loVect(), bx.hiVect(), 
                  BL_TO_FORTRAN(S_old[mfi]),
                  BL_TO_FORTRAN(D_old[mfi]),
-                 dx, &time, &a, &half_dt, &min_iter, &max_iter);
+		 BL_TO_FORTRAN(S_src[mfi]),
+                 dx, &time, &a, &half_dt, &min_iter, &max_iter, &sdc_split);
 
 #ifndef NDEBUG
         if (S_old[mfi].contains_nan())
@@ -47,12 +48,14 @@ Nyx::strang_first_step (Real time, Real dt, MultiFab& S_old, MultiFab& D_old)
 }
 
 void
-Nyx::strang_second_step (Real time, Real dt, MultiFab& S_new, MultiFab& D_new)
+Nyx::strang_second_step (Real time, Real dt, MultiFab& S_new, MultiFab& D_new, MultiFab& S_src)
 {
     BL_PROFILE("Nyx::strang_second_step()");
     Real half_dt = 0.5*dt;
     int  min_iter = 100000;
     int  max_iter =      0;
+    //    MultiFab ext_src_old(grids, dmap, NUM_STATE, 3);
+    //ext_src_old.setVal(0);
 
     int min_iter_grid;
     int max_iter_grid;
@@ -85,7 +88,8 @@ Nyx::strang_second_step (Real time, Real dt, MultiFab& S_new, MultiFab& D_new)
             (bx.loVect(), bx.hiVect(), 
              BL_TO_FORTRAN(S_new[mfi]),
              BL_TO_FORTRAN(D_new[mfi]),
-             dx, &time, &a, &half_dt, &min_iter_grid, &max_iter_grid);
+	     BL_TO_FORTRAN(S_src[mfi]),
+             dx, &time, &a, &half_dt, &min_iter_grid, &max_iter_grid, &sdc_split);
 
         if (S_new[mfi].contains_nan(bx,0,S_new.nComp()))
         {
