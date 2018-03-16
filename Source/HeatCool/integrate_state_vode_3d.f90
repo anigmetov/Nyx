@@ -60,7 +60,7 @@ subroutine integrate_state_vode(lo, hi, &
     integer :: i, j, k, sdc_split
     real(rt) :: z, z_end, a_end, rho, H_reion_z, He_reion_z
     real(rt) :: T_orig, ne_orig, e_orig
-    real(rt) :: rho_out, T_out , ne_out , e_out, rho_src, e_src
+    real(rt) :: rho_out, T_out , ne_out , e_out, rho_src, e_src, rhoe_src
     real(rt) :: mu, mean_rhob, T_H, T_He
     real(rt) :: species(5)
 
@@ -101,9 +101,8 @@ subroutine integrate_state_vode(lo, hi, &
                 rho_src = 0.d0
                 e_src   = 0.d0
                 rho_src = src(i,j,k,URHO)
-!e_src should be src(i,j,k,UMX)
-!rhoe_src should be src(i,j,k,UEINT)
-                e_src   = src(i,j,k,UEINT)
+                e_src   = src(i,j,k,UMX)
+                rhoe_src   = src(i,j,k,UEINT)
 
                 if (inhomogeneous_on) then
                    H_reion_z = diag_eos(i,j,k,ZHI_COMP)
@@ -127,8 +126,9 @@ subroutine integrate_state_vode(lo, hi, &
 
 !                call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
 !                                         rho_out,T_out ,ne_out ,e_out, rho_src, e_src)
+               rho_out = rho + rho_src
                 ne_out = ne_orig
-                 e_out =  e_orig
+                 e_out =  e_orig + e_src
                  T_out =  T_orig
 
                 if (e_out .lt. 0.d0) then
@@ -166,6 +166,11 @@ subroutine integrate_state_vode(lo, hi, &
                    call nyx_eos_T_given_Re(JH_vode, JHe_vode, T_out, ne_out, rho, e_out, a, species)
                 endif
 
+               rho_out = rho + rho_src
+                ne_out = ne_orig
+                 e_out =  e_orig + e_src
+                 T_out =  T_orig
+
                 if(sdc_split .ge. 1e-2) then
                    state(i,j,k,URHO) = state(i,j,k,URHO)+src(i,j,k,URHO)
                    ! Store I_R                                                                     
@@ -179,8 +184,8 @@ subroutine integrate_state_vode(lo, hi, &
                 
                 if(i.eq.1 .and. j.eq.8 .and. k.eq.49) print*, "rho_State(1,8,49) = ", state(i,j,k,URHO)
                 ! Update (rho e) and (rho E)
-                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho * (e_out-e_orig)
-                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + rho * (e_out-e_orig)
+                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_out * e_out- rho * e_orig
+                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + rho_out * e_out- rho * e_orig
 
                 ! Update T and ne
                 diag_eos(i,j,k,TEMP_COMP) = T_out

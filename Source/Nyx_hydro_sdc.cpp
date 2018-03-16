@@ -239,7 +239,7 @@ Nyx::just_the_hydro_sdc (Real time,
 	    //  MultiFab::Copy(S_new,S_old_tmp,0,0,S_old.nComp(),0);
 	    MultiFab::Copy(S_old_tmp,S_old,0,0,S_old.nComp(),0);
 	  //	  MultiFab::Copy(S_old_tmp,S_old,Density,Density,1,0);
-	  //	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
+	  //  	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
 	  //	  MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
 	  //          MultiFab::Copy(D_old_tmp,D_old,0,0,D_old.nComp(),0);
 	  }
