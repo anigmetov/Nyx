@@ -101,6 +101,8 @@ subroutine integrate_state_vode(lo, hi, &
                 rho_src = 0.d0
                 e_src   = 0.d0
                 rho_src = src(i,j,k,URHO)
+!e_src should be src(i,j,k,UMX)
+!rhoe_src should be src(i,j,k,UEINT)
                 e_src   = src(i,j,k,UEINT)
 
                 if (inhomogeneous_on) then
@@ -123,8 +125,8 @@ subroutine integrate_state_vode(lo, hi, &
                 j_vode = j
                 k_vode = k
 
-                call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
-                                         rho_out,T_out ,ne_out ,e_out, rho_src, e_src)
+!                call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
+!                                         rho_out,T_out ,ne_out ,e_out, rho_src, e_src)
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL

@@ -248,7 +248,7 @@ Nyx::just_the_hydro_sdc (Real time,
 	  MultiFab::Copy(S_new,S_old_tmp,Density,Density,1,0);
 	  /////////////When adding src for rho_e and rho_E works in integrate state, uncomment 
 	  // these lines:
-	  //	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
+	  //  	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
 	  //	  MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
 	  //MultiFab::Copy(D_new,D_old,Temp_comp,Temp_comp,1,0);
 	}
