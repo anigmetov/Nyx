@@ -124,6 +124,7 @@ int Nyx::do_hydro = -1;
 int Nyx::add_ext_src = 0;
 int Nyx::heat_cool_type = 0;
 int Nyx::strang_split = 0;
+int Nyx::sdc_split    = 0;
 
 Real Nyx::average_gas_density = 0;
 Real Nyx::average_dm_density = 0;
@@ -362,6 +363,14 @@ Nyx::read_params ()
 
     pp.query("add_ext_src", add_ext_src);
     pp.query("strang_split", strang_split);
+    pp.query("sdc_split", sdc_split);
+
+    if (sdc_split == 1 && strang_split == 1)
+        amrex::Error("Cant have strang_split == 1 and sdc_split == 1");
+    if (sdc_split == 0 && strang_split == 0)
+        amrex::Error("Cant have strang_split == 0 and sdc_split == 0");
+    if (sdc_split != 1 && strang_split != 1)
+        amrex::Error("Cant have strang_split != 1 and sdc_split != 1");
 
 #ifdef FORCING
     pp.get("do_forcing", do_forcing);
@@ -2494,6 +2503,7 @@ Nyx::AddProcsToComp(Amr *aptr, int nSidecarProcs, int prevSidecarProcs,
         allInts.push_back(heat_cool_type);
         allInts.push_back(inhomo_reion);
         allInts.push_back(strang_split);
+        allInts.push_back(sdc_split);
         allInts.push_back(reeber_int);
         allInts.push_back(gimlet_int);
         allInts.push_back(forceParticleRedist);
@@ -2551,6 +2561,7 @@ Nyx::AddProcsToComp(Amr *aptr, int nSidecarProcs, int prevSidecarProcs,
         heat_cool_type = allInts[count++];
         inhomo_reion = allInts[count++];
         strang_split = allInts[count++];
+        sdc_split = allInts[count++];
         reeber_int = allInts[count++];
         gimlet_int = allInts[count++];
         forceParticleRedist = allInts[count++];

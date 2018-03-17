@@ -380,9 +380,15 @@ public:
     amrex::Real advance_no_hydro(amrex::Real time, amrex::Real dt, int iteration, int ncycle);
     amrex::Real advance_hydro_plus_particles(amrex::Real time, amrex::Real dt, int iteration,
                                       int ncycle);
-    void just_the_hydro(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
+
+    void strang_hydro(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
+    void    sdc_hydro(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
+
     void strang_first_step  (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate);
     void strang_second_step (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate);
+
+    void sdc_reaction_step (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate,
+                            amrex::MultiFab& srcstate, int sdc_iter);
 
     amrex::Real advance_particles_only (amrex::Real time, amrex::Real dt, int iteration, int ncycle);
 
@@ -710,8 +716,10 @@ protected:
     static int do_forcing;
 
     // if true , incorporate the source term through Strang-splitting
-    // if false, incorporate the source term through predictor-corrector methodology
     static int strang_split;
+
+    // if true , use SDC to couple hydro and reactions
+    static int sdc_split;
 
 #ifdef GRAVITY
     // There can be only one Gravity object, it covers all levels:

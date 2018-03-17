@@ -17,11 +17,13 @@ CEXE_sources += NeutrinoParticleContainer.cpp
 CEXE_sources += DarkMatterParticleContainer.cpp
 CEXE_sources += two_particle_advance.cpp
 CEXE_sources += comoving.cpp
+CEXE_sources += sdc_splitting.cpp
 CEXE_sources += write_info.cpp
 CEXE_sources += bl_random_c.cpp
 
 ifneq ($(NO_HYDRO), TRUE)
 CEXE_sources += Nyx_hydro.cpp
+CEXE_sources += Nyx_hydro_sdc.cpp
 CEXE_sources += sum_integrated_quantities.cpp
 CEXE_sources += sum_utils.cpp
 CEXE_sources += strang_splitting.cpp
