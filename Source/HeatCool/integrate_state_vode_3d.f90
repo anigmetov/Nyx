@@ -31,7 +31,7 @@ subroutine integrate_state_vode(lo, hi, &
 !       The state vars
 !
     use amrex_fort_module, only : rt => amrex_real
-    use meth_params_module, only : NVAR, URHO, UEDEN, UEINT, &
+    use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UEINT, &
                                    NDIAG, TEMP_COMP, NE_COMP, ZHI_COMP, gamma_minus_1, DIAG1_COMP
     use bl_constants_module, only: M_PI
     use eos_params_module
