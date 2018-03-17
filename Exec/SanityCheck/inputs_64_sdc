@@ -152,6 +152,7 @@ amr.checkpoint_nfiles = 64
 
 # PLOTFILES
 fab.format          = NATIVE_32
+fab.format          = NATIVE
 amr.plot_files_output = 1
 amr.plot_file       = sdc_plt
 amr.plot_int        = 10
