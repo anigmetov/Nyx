@@ -55,7 +55,7 @@ gravity.gravity_type = PoissonGrav
 gravity.no_sync      = 1
 gravity.no_composite = 1
 gravity.solve_with_cpp = 0
-gravity.solve_with_hpgmg = 1
+gravity.solve_with_hpgmg = 0
 
 mg.bottom_solver = 4
 
@@ -154,12 +154,11 @@ amr.checkpoint_nfiles = 64
 fab.format          = NATIVE_32
 amr.plot_files_output = 1
 amr.plot_file       = strang_plt
-amr.plot_int        = 1
+amr.plot_int        = 10
 amr.plot_nfiles     = 64
 particles.write_in_plotfile = 1
 
 amr.plot_vars        = density xmom ymom zmom rho_e Temp phi_grav SFNR SSNR rho_E Ne DIAG1 DIAG2
-amr.derive_plot_vars = particle_mass_density
 amr.plot_vars        = density xmom ymom zmom rho_e Temp phi_grav rho_E Ne
 amr.derive_plot_vars = particle_mass_density particle_count neutrino_particle_count
 
