@@ -50,11 +50,6 @@ public:
                          amrex::Real time);
 
     // 
-    // Use the C++ solver in C_CellMG instead of the F90 solvers in F_MG.
-    //
-    void solve_with_Cpp(int level, amrex::MultiFab& phi, const amrex::Vector<amrex::MultiFab*>& grad_phi,
-                        amrex::MultiFab& rhs, amrex::Real tol, amrex::Real abs_tol);
-    // 
     // Use the HPGMG solver
     //
 #ifdef USEHPGMG
@@ -180,7 +175,6 @@ protected:
     static int no_composite;
     static int dirichlet_bcs;
     static int  monopole_bcs;
-    static int  solve_with_cpp;
     static int solve_with_hpgmg;
     static int solve_with_mlmg;
     static int mlmg_max_fmg_iter;

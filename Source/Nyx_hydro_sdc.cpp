@@ -20,13 +20,27 @@ Nyx::sdc_hydro (Real time,
 {
     BL_PROFILE("Nyx::sdc_hydro()");
 
+    BL_ASSERT(NUM_GROW == 4);
+
     int sdc_iter;
     const Real prev_time    = state[State_Type].prevTime();
     const Real cur_time     = state[State_Type].curTime();
+
     MultiFab&  S_old        = get_old_data(State_Type);
-    MultiFab&  D_old        = get_old_data(DiagEOS_Type);
     MultiFab&  S_new        = get_new_data(State_Type);
+
+    MultiFab&  D_old        = get_old_data(DiagEOS_Type);
     MultiFab&  D_new        = get_new_data(DiagEOS_Type);
+
+    MultiFab&  IR_old       = get_old_data(SDC_IR_Type);
+    MultiFab&  IR_new       = get_new_data(SDC_IR_Type);
+
+    // This is just a hack to get us started
+    if (time == 0.)
+    {
+       IR_old.setVal(0.);
+       IR_new.setVal(0.);
+    }
 
     // It's possible for interpolation to create very small negative values for
     // species so we make sure here that all species are non-negative after this
@@ -36,12 +50,6 @@ Nyx::sdc_hydro (Real time,
     MultiFab ext_src_old(grids, dmap, NUM_STATE, 3);
     ext_src_old.setVal(0);
 
-    //Use previous I_R, ignore grow cells
-    // TREATING I_R as zero
-    MultiFab I_R(grids, dmap, 1, 3);
-    I_R.setVal(0.);
-    // MultiFab::Copy(ext_src_old,D_old,Diag1_comp,Eint,1,0);
-    
     // Define the gravity vector so we can pass this to ca_umdrv.
     MultiFab grav_vector(grids, dmap, BL_SPACEDIM, 3);
     grav_vector.setVal(0.);
@@ -50,8 +58,6 @@ Nyx::sdc_hydro (Real time,
     gravity->get_old_grav_vector(level, grav_vector, time);
     grav_vector.FillBoundary(geom.periodicity());
 #endif
-
-    BL_ASSERT(NUM_GROW == 4);
 
     // Create FAB for extended grid values (including boundaries) and fill.
     MultiFab S_old_tmp(S_old.boxArray(), S_old.DistributionMap(), NUM_STATE, NUM_GROW);
@@ -66,14 +72,19 @@ Nyx::sdc_hydro (Real time,
     MultiFab divu_cc(grids, dmap, 1, 0);
     divu_cc.setVal(0);
 
-    FArrayBox flux[BL_SPACEDIM], u_gdnv[BL_SPACEDIM];
-
     //Begin loop over SDC iterations
     int sdc_iter_max = 2;
 
     for (sdc_iter = 0; sdc_iter < sdc_iter_max; sdc_iter++)
     {
        amrex::Print() << "STARTING SDC_ITER LOOP " << sdc_iter << std::endl;
+
+       // FillPatch the IR term into ext_src_old for both Eint and Eden
+       // ASA -- Is this term actually the source term for (rho e) or (e)???
+       MultiFab IR_tmp(grids, dmap, 1, NUM_GROW);
+       FillPatch(*this, IR_tmp, NUM_GROW, time, SDC_IR_Type, 0, 1);
+       MultiFab::Copy(ext_src_old,IR_tmp,0,Eden,1,0);
+       MultiFab::Copy(ext_src_old,IR_tmp,0,Eint,1,0);
 
        bool   init_flux_register = (sdc_iter == 0);
        bool add_to_flux_register = (sdc_iter == sdc_iter_max-1);
@@ -91,41 +102,18 @@ Nyx::sdc_hydro (Real time,
        //    as guesses when we next need them.
        MultiFab::Copy(D_new,D_old,0,0,D_old.nComp(),0);
        
+       // ASA -- Why do we do this??  Did we change S_old_tmp at some point
        MultiFab::Copy(S_old_tmp,S_old,0,0,S_new.nComp(),0);
 
-         // Gives us I^1 from integration with F^(n+1/2) source
-         // Stores I^1 in D_new(diag1_comp) and ext_src_old(UEINT)
+       // Gives us I^1 from integration with F^(n+1/2) source
+       // Stores I^1 in D_new(diag1_comp) and ext_src_old(UEINT)
 
-       sdc_reaction_step(time, dt, S_old_tmp, D_new, ext_src_old,sdc_iter);
+       // This step needs to do the update of (rho),  (rho e) and (rho E)
+       //      AND  needs to return an updated value of I_R in the old SDC_IR statedata.
+       sdc_reaction_step(time, dt, S_old_tmp, D_new, ext_src_old, sdc_iter);
 
-	 // Consider changing to a copy operation
-	 // I_R is stored in two places, but we need it in diag_eos for the next timestep
-	 //	 MultiFab::Copy(ext_src_old,D_new,Diag1_comp,Eint,1,0);
-    
-	 //If another sdc iteration is performed, use the old state data
-	 // This could be more general (sdc_iter< sdc_iter_max-1)
-        if (sdc_iter < sdc_iter_max-1) 
-        {
-	    ext_src_old.setVal(0);
-	    MultiFab::Copy(ext_src_old,I_R,0,Eint,1,0);
-	    MultiFab::Copy(S_old_tmp,S_old,0,0,S_old.nComp(),0);
-
-        } else {
-
-	  printf("Density component is: %i",Density);
-	  MultiFab::Copy(S_new,S_old_tmp,Density,Density,1,0);
-
-	  /////////////When adding src for rho_e and rho_E works in integrate state, uncomment 
-	  // these lines:
-	  //  	  MultiFab::Copy(S_new,S_old_tmp,Eden,Eden,1,0);
-	  //	  MultiFab::Copy(S_new,S_old_tmp,Eint,Eint,1,0);
-	  //MultiFab::Copy(D_new,D_old,Temp_comp,Temp_comp,1,0);
-	}
-
-    }
-    //End loop over SDC iterations
+    } //End loop over SDC iterations
 
     grav_vector.clear();
-
 }
 #endif

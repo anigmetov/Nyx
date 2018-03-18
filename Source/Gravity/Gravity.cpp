@@ -35,7 +35,6 @@ int  Gravity::no_sync       = 0;
 int  Gravity::no_composite  = 0;
 int  Gravity::dirichlet_bcs = 0;
 int  Gravity::monopole_bcs  = 0;
-int  Gravity::solve_with_cpp= 0;
 int  Gravity::solve_with_hpgmg = 0;
 int  Gravity::solve_with_mlmg = 0;
 int  Gravity::mlmg_max_fmg_iter = 0;
@@ -133,15 +132,13 @@ Gravity::read_params ()
         pp.query("dirichlet_bcs", dirichlet_bcs);
         pp.query("monopole_bcs"  , monopole_bcs);
 
-        pp.query("solve_with_cpp", solve_with_cpp);
         pp.query("solve_with_hpgmg", solve_with_hpgmg);
         pp.query("solve_with_mlmg", solve_with_mlmg);
         pp.query("mlmg_max_fmg_iter", mlmg_max_fmg_iter);
         pp.query("mlmg_agglomeration", mlmg_agglomeration);
         pp.query("mlmg_consolidation", mlmg_consolidation);
 
-        const int nflags = static_cast<int>(solve_with_cpp)
-            +              static_cast<int>(solve_with_hpgmg)
+        const int nflags = static_cast<int>(solve_with_hpgmg)
             +              static_cast<int>(solve_with_mlmg);
         if (nflags >= 2) {
           amrex::Error("Multiple gravity solvers selected.");
@@ -486,11 +483,7 @@ Gravity::solve_for_phi (int               level,
     const Real  tol     = sl_tol;
     const Real  abs_tol = 0.;
 
-    if (solve_with_cpp)
-    {
-        solve_with_Cpp(level, phi, grad_phi, Rhs, tol, abs_tol);
-    }
-    else if (solve_with_hpgmg)
+    if (solve_with_hpgmg)
     {
 #ifdef USEHPGMG
         solve_with_HPGMG(level, phi, grad_phi, Rhs, tol, abs_tol);
@@ -1195,15 +1188,7 @@ Gravity::actual_multilevel_solve (int                       level,
         Real tol           = ml_tol;
         Real abs_tol       = 0;
         
-        //
-        // Can only use the C++ solvers if single-level
-        //
-        if (solve_with_cpp && (level == finest_level))
-        {
-            // We can only use the C++ solvers for a single level solve, but it's ok if level > 0
-            solve_with_Cpp(level, *(phi_p[0]), grad_phi[0], *(Rhs_p[0]), tol, abs_tol);
-        }
-        else if ( solve_with_hpgmg && (level == finest_level) && (level == 0) )
+        if ( solve_with_hpgmg && (level == finest_level) && (level == 0) )
         {
 #ifdef USEHPGMG
             // Right now we can only use HPGMG for a single level = 0 solve
@@ -1997,33 +1982,6 @@ Gravity::CorrectRhsUsingOffset(int level, MultiFab& Rhs)
     }
 }
 
-void
-Gravity::solve_with_Cpp(int level, MultiFab& soln, const Vector<MultiFab*>& grad_phi,
-                        MultiFab& rhs, Real tol, Real abs_tol)
-{
-  BL_PROFILE("Gravity::solve_with_Cpp()");
-  const Geometry& geom = parent->Geom(level);
-  const Real* dx = parent->Geom(level).CellSize();
-
-  BndryData bd(grids[level], dmap[level], 1, geom);
-  set_boundary(bd, rhs, dx);
-
-  // Note that this actually solves Lap(phi) = RHS, not -Lap(phi) as in the F90 solve
-  Laplacian lap_operator(bd, dx[0]);
-
-  MultiGrid mg(lap_operator);
-  mg.setVerbose(1);
-  mg.solve(soln, rhs, tol, abs_tol);
-
-  lap_operator.compFlux(*grad_phi[0],*grad_phi[1],*grad_phi[2],soln);
-
-  // We have to multiply by -1 here because the compFlux routine returns
-  // grad(phi), not -grad(phi) as in the F90 solver.
-  grad_phi[0]->mult(-1.0);
-  grad_phi[1]->mult(-1.0);
-  grad_phi[2]->mult(-1.0);
-}
-
 #ifdef USEHPGMG
 void
 Gravity::solve_with_HPGMG(int level,
@@ -2299,7 +2257,6 @@ Gravity::AddProcsToComp(Amr *aptr, int level, AmrLevel *level_data_to_install,
      allInts.push_back(no_composite);
      allInts.push_back(dirichlet_bcs);
      allInts.push_back(monopole_bcs);
-     allInts.push_back(solve_with_cpp);
      allInts.push_back(solve_with_hpgmg);
      allInts.push_back(stencil_type);
      for(int i(0); i < 2*BL_SPACEDIM; ++i)    { allInts.push_back(mg_bc[i]); }
@@ -2319,7 +2276,6 @@ Gravity::AddProcsToComp(Amr *aptr, int level, AmrLevel *level_data_to_install,
      no_composite = allInts[count++];
      dirichlet_bcs = allInts[count++];
      monopole_bcs = allInts[count++];
-     solve_with_cpp = allInts[count++];
      solve_with_hpgmg = allInts[count++];
      stencil_type = allInts[count++];
      for(int i(0); i < 2*BL_SPACEDIM; ++i)    { mg_bc[i] = allInts[count++]; }
