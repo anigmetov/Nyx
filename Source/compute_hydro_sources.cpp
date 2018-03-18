@@ -12,6 +12,7 @@ Nyx::compute_hydro_sources(amrex::Real time, amrex::Real dt, amrex::Real a_old, 
                            MultiFab& grav_vector, MultiFab& divu_cc,
                            bool init_flux_register, bool add_to_flux_register) 
 {
+    amrex::Print() << "Computing the hydro sources ... " << std::endl;
     const int finest_level = parent->finestLevel();
     const Real* dx = geom.CellSize();
     FArrayBox flux[BL_SPACEDIM], u_gdnv[BL_SPACEDIM];
