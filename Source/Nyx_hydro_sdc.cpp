@@ -28,16 +28,6 @@ Nyx::sdc_hydro (Real time,
     MultiFab&  S_new        = get_new_data(State_Type);
     MultiFab&  D_new        = get_new_data(DiagEOS_Type);
 
-    if (std::abs(time-prev_time) > (1.e-10*cur_time) )
-    {
-        if (ParallelDescriptor::IOProcessor())
-        {
-            std::cout << "sdc_hydro:  prev_time = " << prev_time << std::endl;
-            std::cout << "sdc_hydro:       time = " <<      time << std::endl;
-        }
-        amrex::Abort("time should equal prev_time in sdc_hydro!");
-    }
-
     // It's possible for interpolation to create very small negative values for
     // species so we make sure here that all species are non-negative after this
     // point
@@ -46,7 +36,7 @@ Nyx::sdc_hydro (Real time,
     MultiFab ext_src_old(grids, dmap, NUM_STATE, 3);
     ext_src_old.setVal(0);
 
-    //Use previous I_R, ignore growth cells
+    //Use previous I_R, ignore grow cells
     // TREATING I_R as zero
     MultiFab I_R(grids, dmap, 1, 3);
     I_R.setVal(0.);

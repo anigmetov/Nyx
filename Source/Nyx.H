@@ -39,6 +39,9 @@ enum StateType {
     PhiGrav_Type,
     Gravity_Type,
 #endif
+#ifdef SDC
+    SDC_IR_Type,
+#endif
     NUM_STATE_TYPE
 };
 #endif
@@ -382,7 +385,9 @@ public:
                                       int ncycle);
 
     void strang_hydro(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
+#ifdef SDC
     void    sdc_hydro(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
+#endif
 
     void compute_hydro_sources(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new,
                                amrex::MultiFab& S_border, amrex::MultiFab& D_border, 
@@ -398,8 +403,10 @@ public:
     void strang_first_step  (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate);
     void strang_second_step (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate);
 
+#ifdef SDC
     void sdc_reaction_step (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate,
                             amrex::MultiFab& srcstate, int sdc_iter);
+#endif
 
     amrex::Real advance_particles_only (amrex::Real time, amrex::Real dt, int iteration, int ncycle);
 
@@ -729,8 +736,10 @@ protected:
     // if true , incorporate the source term through Strang-splitting
     static int strang_split;
 
+#ifdef SDC
     // if true , use SDC to couple hydro and reactions
     static int sdc_split;
+#endif
 
 #ifdef GRAVITY
     // There can be only one Gravity object, it covers all levels:

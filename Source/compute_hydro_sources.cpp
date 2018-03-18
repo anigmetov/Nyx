@@ -81,7 +81,7 @@ Nyx::compute_hydro_sources(amrex::Real time, amrex::Real dt, amrex::Real a_old, 
              BL_TO_FORTRAN(flux[1]),
              BL_TO_FORTRAN(flux[2]),
              &cflLoc, &a_old, &a_new, 
-             &print_fortran_warnings, &do_grav, &sdc_split);
+             &print_fortran_warnings, &do_grav);
 
         for (int i = 0; i < BL_SPACEDIM; ++i) 
           fluxes[i][mfi].copy(flux[i], mfi.nodaltilebox(i));

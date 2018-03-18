@@ -27,16 +27,6 @@ Nyx::strang_hydro (Real time,
     MultiFab&  S_new        = get_new_data(State_Type);
     MultiFab&  D_new        = get_new_data(DiagEOS_Type);
 
-    if (std::abs(time-prev_time) > (1.e-10*cur_time) )
-    {
-        if (ParallelDescriptor::IOProcessor())
-        {
-            std::cout << "strang_hydro:  prev_time = " << prev_time << std::endl;
-            std::cout << "strang_hydro:       time = " <<      time << std::endl;
-        }
-        amrex::Abort("time should equal prev_time in strang_hydro!");
-    }
-
     // It's possible for interpolation to create very small negative values for
     // species so we make sure here that all species are non-negative after this
     // point
@@ -45,7 +35,7 @@ Nyx::strang_hydro (Real time,
     MultiFab ext_src_old(grids, dmap, NUM_STATE, 3);
     ext_src_old.setVal(0);
 
-    // Define the gravity vector so we can pass this to ca_umdrv.
+    // Define the gravity vector 
     MultiFab grav_vector(grids, dmap, BL_SPACEDIM, 3);
     grav_vector.setVal(0.);
 

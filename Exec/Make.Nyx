@@ -31,6 +31,10 @@ ifeq ($(USE_GRAV), TRUE)
   DEFINES += -DGRAVITY
 endif
 
+ifeq ($(USE_SDC), TRUE)
+  DEFINES += -DSDC
+endif
+
 ifeq ($(NO_HYDRO), TRUE)
   DEFINES += -DNO_HYDRO
 endif

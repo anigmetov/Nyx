@@ -160,7 +160,7 @@ extern "C"
      const amrex::Real* cflLoc,
      const amrex::Real* a_old, const amrex::Real* a_new,
      const int* print_fortran_warnings,
-     const int* do_grav, const int* sdc_split);
+     const int* do_grav);
 
   void fort_update_state
     ( const int lo[], const int hi[],

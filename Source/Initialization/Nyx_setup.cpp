@@ -275,6 +275,14 @@ Nyx::hydro_setup()
                            StateDescriptor::Point, 1, NDIAG_C, interp,
                            state_data_extrap, store_in_checkpoint);
 
+#ifdef SDC
+    // This only has one component -- the update to e (or rho_e??)
+    store_in_checkpoint = true;
+    desc_lst.addDescriptor(SDC_IR_Type, IndexType::TheCellType(),
+                           StateDescriptor::Point, 1, 1, interp,
+                           state_data_extrap, store_in_checkpoint);
+#endif
+
 #ifdef GRAVITY
     store_in_checkpoint = true;
     desc_lst.addDescriptor(PhiGrav_Type, IndexType::TheCellType(),
