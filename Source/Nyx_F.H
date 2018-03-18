@@ -150,6 +150,7 @@ extern "C"
      const BL_FORT_FAB_ARG(ugdnvy),
      const BL_FORT_FAB_ARG(ugdnvz),
      const BL_FORT_FAB_ARG(src),
+     const BL_FORT_FAB_ARG(hydro_src),
      const BL_FORT_FAB_ARG(grav),
      const amrex::Real dx[], const amrex::Real* dt,
      D_DECL(const BL_FORT_FAB_ARG(xflux),

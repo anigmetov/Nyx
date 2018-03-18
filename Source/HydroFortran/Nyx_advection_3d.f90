@@ -10,6 +10,7 @@
            ugdnvy_out,ugdnvy_l1,ugdnvy_l2,ugdnvy_l3,ugdnvy_h1,ugdnvy_h2,ugdnvy_h3, &
            ugdnvz_out,ugdnvz_l1,ugdnvz_l2,ugdnvz_l3,ugdnvz_h1,ugdnvz_h2,ugdnvz_h3, &
            src ,src_l1,src_l2,src_l3,src_h1,src_h2,src_h3, &
+           hydro_src ,hsrc_l1,hsrc_l2,hsrc_l3,hsrc_h1,hsrc_h2,hsrc_h3, &
            grav,gv_l1,gv_l2,gv_l3,gv_h1,gv_h2,gv_h3, &
            delta,dt, &
            flux1,flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3, &
@@ -36,6 +37,7 @@
       integer flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3
       integer flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3
       integer src_l1,src_l2,src_l3,src_h1,src_h2,src_h3
+      integer hsrc_l1,hsrc_l2,hsrc_l3,hsrc_h1,hsrc_h2,hsrc_h3
       integer gv_l1,gv_l2,gv_l3,gv_h1,gv_h2,gv_h3
       real(rt)   uin(  uin_l1:uin_h1,    uin_l2:uin_h2,     uin_l3:uin_h3,  NVAR)
       real(rt)  uout( uout_l1:uout_h1,  uout_l2:uout_h2,   uout_l3:uout_h3, NVAR)
@@ -43,6 +45,7 @@
       real(rt) ugdnvy_out(ugdnvy_l1:ugdnvy_h1,ugdnvy_l2:ugdnvy_h2,ugdnvy_l3:ugdnvy_h3)
       real(rt) ugdnvz_out(ugdnvz_l1:ugdnvz_h1,ugdnvz_l2:ugdnvz_h2,ugdnvz_l3:ugdnvz_h3)
       real(rt)   src(  src_l1:src_h1,    src_l2:src_h2,     src_l3:src_h3,  NVAR)
+      real(rt) hydro_src(hsrc_l1:hsrc_h1,hsrc_l2:hsrc_h2,hsrc_l3:hsrc_h3,NVAR)
       real(rt)  grav( gv_l1:gv_h1,  gv_l2:gv_h2,   gv_l3:gv_h3,    3)
       real(rt) flux1(flux1_l1:flux1_h1,flux1_l2:flux1_h2, flux1_l3:flux1_h3,NVAR)
       real(rt) flux2(flux2_l1:flux2_h1,flux2_l2:flux2_h2, flux2_l3:flux2_h3,NVAR)
@@ -127,12 +130,17 @@
 
       ! Conservative update
       call consup(uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
-                  uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
-                  src ,  src_l1,  src_l2,  src_l3,  src_h1,  src_h2,  src_h3, &
+                  hydro_src , hsrc_l1, hsrc_l2, hsrc_l3, hsrc_h1, hsrc_h2, hsrc_h3, &
                   flux1,flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3, &
                   flux2,flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3, &
                   flux3,flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3, &
                   div,pdivu,lo,hi,dx,dy,dz,dt,a_old,a_new)
+
+      call update_state(uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+                  uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
+                  src ,  src_l1,  src_l2,  src_l3,  src_h1,  src_h2,  src_h3, &
+                  hydro_src , hsrc_l1, hsrc_l2, hsrc_l3, hsrc_h1, hsrc_h2, hsrc_h3, &
+                  pdivu,lo,hi,dt,a_old,a_new)
 
       ! We are done with these here so can go ahead and free up the space.
       call bl_deallocate(q)
@@ -145,8 +153,8 @@
 
       ! Enforce the density >= small_dens.  Make sure we do this immediately after consup.
       call enforce_minimum_density(uin, uin_l1, uin_l2, uin_l3, uin_h1, uin_h2, uin_h3, &
-                                        uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
-                                        lo,hi,print_fortran_warnings)
+                                   uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
+                                   lo,hi,print_fortran_warnings)
       
       if (do_grav .gt. 0) &
           call add_grav_source(uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
@@ -1160,8 +1168,7 @@
 ! :::
 
     subroutine consup(uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
-                      uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
-                      src ,src_l1,src_l2,src_l3,src_h1,src_h2,src_h3, &
+                      hydro_src ,hsrc_l1,hsrc_l2,hsrc_l3,hsrc_h1,hsrc_h2,hsrc_h3, &
                       flux1,flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3, &
                       flux2,flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3, &
                       flux3,flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3, &
@@ -1176,28 +1183,25 @@
 
       integer lo(3), hi(3)
       integer   uin_l1,  uin_l2,  uin_l3,  uin_h1,  uin_h2,  uin_h3
-      integer  uout_l1, uout_l2, uout_l3, uout_h1, uout_h2, uout_h3
-      integer   src_l1,  src_l2,  src_l3,  src_h1,  src_h2,  src_h3
+      integer   hsrc_l1,  hsrc_l2,  hsrc_l3,  hsrc_h1,  hsrc_h2,  hsrc_h3
       integer flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3
       integer flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3
       integer flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3
 
-      real(rt) uin(uin_l1:uin_h1,uin_l2:uin_h2,uin_l3:uin_h3,NVAR)
-      real(rt) uout(uout_l1:uout_h1,uout_l2:uout_h2,uout_l3:uout_h3,NVAR)
-      real(rt)   src(src_l1:src_h1,src_l2:src_h2,src_l3:src_h3,NVAR)
-      real(rt) flux1(flux1_l1:flux1_h1,flux1_l2:flux1_h2,flux1_l3:flux1_h3,NVAR)
-      real(rt) flux2(flux2_l1:flux2_h1,flux2_l2:flux2_h2,flux2_l3:flux2_h3,NVAR)
-      real(rt) flux3(flux3_l1:flux3_h1,flux3_l2:flux3_h2,flux3_l3:flux3_h3,NVAR)
-      real(rt) div(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1)
-      real(rt) pdivu(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
-      real(rt) dx, dy, dz, dt
-      real(rt) a_old, a_new
+      real(rt)  :: uin(uin_l1:uin_h1,uin_l2:uin_h2,uin_l3:uin_h3,NVAR)
+      real(rt)  :: hydro_src(hsrc_l1:hsrc_h1,hsrc_l2:hsrc_h2,hsrc_l3:hsrc_h3,NVAR)
+      real(rt)  :: flux1(flux1_l1:flux1_h1,flux1_l2:flux1_h2,flux1_l3:flux1_h3,NVAR)
+      real(rt)  :: flux2(flux2_l1:flux2_h1,flux2_l2:flux2_h2,flux2_l3:flux2_h3,NVAR)
+      real(rt)  :: flux3(flux3_l1:flux3_h1,flux3_l2:flux3_h2,flux3_l3:flux3_h3,NVAR)
+      real(rt)  :: div(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1)
+      real(rt)  :: pdivu(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
+      real(rt)  :: dx, dy, dz, dt, a_old, a_new
 
       real(rt) :: div1, a_half, a_oldsq, a_newsq
       real(rt) :: area1, area2, area3
       real(rt) :: vol, volinv, a_newsq_inv
       real(rt) :: a_half_inv, a_new_inv, dt_a_new
-      integer          :: i, j, k, n
+      integer  :: i, j, k, n
 
       a_half  = HALF * (a_old + a_new)
       a_oldsq = a_old * a_old
@@ -1257,71 +1261,48 @@
       a_newsq_inv = ONE / a_newsq
 
       do n = 1, NVAR
-
-         ! update everything else with fluxes and source terms
          do k = lo(3),hi(3)
             do j = lo(2),hi(2)
                do i = lo(1),hi(1)
 
                   ! Density
                   if (n .eq. URHO) then
-                     uout(i,j,k,n) = uin(i,j,k,n) + &
+                      hydro_src(i,j,k,n) = &
                           ( ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
                           +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
-                          +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * volinv &
-                          +   dt * src(i,j,k,n) ) * a_half_inv
+                          +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * volinv  ) * a_half_inv
 
                   ! Momentum
                   else if (n .ge. UMX .and. n .le. UMZ) then
-                     uout(i,j,k,n) = a_old*uin(i,j,k,n) &
-                          + ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
+                     hydro_src(i,j,k,n) =  &
+                            ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
                           +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
-                          +   flux3(i,j,k,n) - flux3(i,j,k+1,n)) * volinv &
-                          +   dt * src(i,j,k,n)
-                     uout(i,j,k,n) = uout(i,j,k,n) * a_new_inv
+                          +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * volinv
 
                   ! (rho E)
                   else if (n .eq. UEDEN) then
-                     uout(i,j,k,n) = a_oldsq*uin(i,j,k,n) &
-                          + ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
+                     hydro_src(i,j,k,n) =  &
+                            ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
                           +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
                           +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * a_half * volinv &
-                          +   a_half * dt * src(i,j,k,n)  &
                           +   a_half * (a_new - a_old) * ( TWO - THREE * gamma_minus_1) * uin(i,j,k,UEINT)
-                     uout(i,j,k,n) = uout(i,j,k,n) * a_newsq_inv
 
                   ! (rho e)
                   else if (n .eq. UEINT) then
 
-                     uout(i,j,k,n) = a_oldsq*uin(i,j,k,n) &
-                          + ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
-                          +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
-                          +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * a_half * volinv &
-                          +   a_half * (a_new - a_old) * ( TWO - THREE * gamma_minus_1) * uin(i,j,k,UEINT) & 
-                          +   a_half * dt * src(i,j,k,n)
-
-                     ! *********************************************************************************
-                     ! This is the version where "pdivu" is actually just divu
-                     uout(i,j,k,n) = uout(i,j,k,n) &
-                          -   a_half * dt * (HALF * gamma_minus_1 * uin(i,j,k,n)) * pdivu(i,j,k)
-
-                     uout(i,j,k,n) = uout(i,j,k,n) / &
-                         ( ONE + a_half * dt * (HALF * gamma_minus_1 * pdivu(i,j,k)) * a_newsq_inv )
-
-                     ! *********************************************************************************
-                     ! This is the original version
-                     ! uout(i,j,k,n) = uout(i,j,k,n) -  a_half * dt * pdivu(i,j,k)
-                     ! *********************************************************************************
-
-                     uout(i,j,k,n) = uout(i,j,k,n) * a_newsq_inv
+                     hydro_src(i,j,k,n) =  &
+                          ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
+                           +flux2(i,j,k,n) - flux2(i,j+1,k,n) &
+                           +flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * a_half * volinv &
+                           +a_half*(a_new - a_old) * ( TWO - THREE * gamma_minus_1) * uin(i,j,k,UEINT) &
+                           -a_half*dt*(HALF * gamma_minus_1 * uin(i,j,k,n)) * pdivu(i,j,k)
 
                   ! (rho X_i) and (rho adv_i) and (rho aux_i)
                   else
-                     uout(i,j,k,n) = uin(i,j,k,n) + &
-                          ( ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
+                     hydro_src(i,j,k,n) = &
+                            ( flux1(i,j,k,n) - flux1(i+1,j,k,n) &
                           +   flux2(i,j,k,n) - flux2(i,j+1,k,n) &
-                          +   flux3(i,j,k,n) - flux3(i,j,k+1,n)) * volinv &
-                          +   dt * src(i,j,k,n) ) * a_half_inv
+                          +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * volinv 
                   endif
 
                enddo
@@ -1350,6 +1331,95 @@
       end do
 
       end subroutine consup
+
+! :::
+! ::: ------------------------------------------------------------------
+! :::
+
+     subroutine update_state(uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+                             uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
+                             src ,src_l1,src_l2,src_l3,src_h1,src_h2,src_h3, &
+                             hydro_src ,hsrc_l1,hsrc_l2,hsrc_l3,hsrc_h1,hsrc_h2,hsrc_h3, &
+                             pdivu,lo,hi,dt,a_old,a_new)
+ 
+      use amrex_fort_module, only : rt => amrex_real
+      use bl_constants_module
+      use meth_params_module, only : NVAR, URHO, UMX, UMZ, UEDEN, UEINT, UFS, gamma_minus_1
+
+      implicit none
+
+      integer lo(3), hi(3)
+      integer, intent(in) ::  uin_l1,   uin_l2,  uin_l3,  uin_h1,  uin_h2,  uin_h3
+      integer, intent(in) ::  uout_l1, uout_l2, uout_l3, uout_h1, uout_h2, uout_h3
+      integer, intent(in) ::   src_l1,  src_l2,  src_l3,  src_h1,  src_h2,  src_h3
+      integer, intent(in) ::  hsrc_l1, hsrc_l2, hsrc_l3, hsrc_h1, hsrc_h2, hsrc_h3
+
+      real(rt), intent(in)  ::   uin(uin_l1:uin_h1,uin_l2:uin_h2,uin_l3:uin_h3,NVAR)
+      real(rt), intent(out) ::  uout(uout_l1:uout_h1,uout_l2:uout_h2,uout_l3:uout_h3,NVAR)
+      real(rt), intent(in)  ::   src(src_l1:src_h1,src_l2:src_h2,src_l3:src_h3,NVAR)
+      real(rt), intent(in)  ::  hydro_src(hsrc_l1:hsrc_h1,hsrc_l2:hsrc_h2,hsrc_l3:hsrc_h3,NVAR)
+      real(rt), intent(in)  :: pdivu(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
+      real(rt), intent(in)  ::  dt, a_old, a_new
+
+      real(rt) :: a_half, a_oldsq, a_newsq
+      real(rt) :: a_new_inv, a_newsq_inv, a_half_inv, dt_a_new
+      integer  :: i, j, k, n
+
+      a_half     = HALF * (a_old + a_new)
+      a_oldsq = a_old * a_old
+      a_newsq = a_new * a_new
+
+      a_half_inv  = ONE / a_half
+      a_new_inv   = ONE / a_new
+      a_newsq_inv = ONE / a_newsq
+
+      do n = 1, NVAR
+
+         ! Actually do the update here
+         do k = lo(3),hi(3)
+            do j = lo(2),hi(2)
+               do i = lo(1),hi(1)
+
+                  ! Density
+                  if (n .eq. URHO) then
+                     uout(i,j,k,n) = uin(i,j,k,n) + hydro_src(i,j,k,n) &
+                                    + dt *  src(i,j,k,n) * a_half_inv
+
+                  ! Momentum
+                  else if (n .ge. UMX .and. n .le. UMZ) then
+                     uout(i,j,k,n) = a_old * uin(i,j,k,n) + hydro_src(i,j,k,n) &
+                                    + dt   * src(i,j,k,n)
+                     uout(i,j,k,n) = uout(i,j,k,n) * a_new_inv
+
+                  ! (rho E)
+                  else if (n .eq. UEDEN) then
+                     uout(i,j,k,n) =  a_oldsq * uin(i,j,k,n) + hydro_src(i,j,k,n) &
+                                    + a_half  * dt * src(i,j,k,n)  
+                     uout(i,j,k,n) = uout(i,j,k,n) * a_newsq_inv
+
+                  ! (rho e)
+                  else if (n .eq. UEINT) then
+
+                     ! This is the version where "pdivu" is actually just divu
+                     uout(i,j,k,n) =  a_oldsq*uin(i,j,k,n) + hydro_src(i,j,k,n) &
+                                    + a_half * dt * src(i,j,k,n) 
+
+                     uout(i,j,k,n) = uout(i,j,k,n) * a_newsq_inv / &
+                         ( ONE + a_half * dt * (HALF * gamma_minus_1 * pdivu(i,j,k)) * a_newsq_inv )
+
+                  ! (rho X_i) and (rho adv_i) and (rho aux_i)
+                  else
+                     uout(i,j,k,n) = uin(i,j,k,n) +  hydro_src(i,j,k,n) &
+                                    + dt * src(i,j,k,n) * a_half_inv
+
+                  endif
+
+               enddo
+            enddo
+         enddo
+      enddo
+
+      end subroutine update_state
 
 ! :::
 ! ::: ------------------------------------------------------------------

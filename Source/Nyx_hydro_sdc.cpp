@@ -102,6 +102,9 @@ Nyx::sdc_hydro (Real time,
     MultiFab D_old_tmp(D_old.boxArray(), D_old.DistributionMap(), D_old.nComp(), NUM_GROW);
     FillPatch(*this, D_old_tmp, NUM_GROW, time, DiagEOS_Type, 0, D_old.nComp());
 
+    MultiFab hydro_src(grids, dmap, NUM_STATE, 0);
+    hydro_src.setVal(0);
+
     FArrayBox flux[BL_SPACEDIM], u_gdnv[BL_SPACEDIM];
 
     //Begin loop over SDC iterations
@@ -149,6 +152,7 @@ Nyx::sdc_hydro (Real time,
              BL_TO_FORTRAN(u_gdnv[1]),
              BL_TO_FORTRAN(u_gdnv[2]),
              BL_TO_FORTRAN(ext_src_old[mfi]),
+             BL_TO_FORTRAN(hydro_src[mfi]),
              BL_TO_FORTRAN(grav_vector[mfi]),
              dx, &dt,
              BL_TO_FORTRAN(flux[0]),

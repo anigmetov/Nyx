@@ -95,6 +95,9 @@ Nyx::strang_hydro (Real time,
     MultiFab D_old_tmp(D_old.boxArray(), D_old.DistributionMap(), D_old.nComp(), NUM_GROW);
     FillPatch(*this, D_old_tmp, NUM_GROW, time, DiagEOS_Type, 0, D_old.nComp());
 
+    MultiFab hydro_src(grids, dmap, NUM_STATE, 0);
+    hydro_src.setVal(0.);
+
     strang_first_step(time,dt,S_old_tmp,D_old_tmp);
 
 #ifdef _OPENMP
@@ -136,6 +139,7 @@ Nyx::strang_hydro (Real time,
              BL_TO_FORTRAN(u_gdnv[1]),
              BL_TO_FORTRAN(u_gdnv[2]),
              BL_TO_FORTRAN(ext_src_old[mfi]),
+             BL_TO_FORTRAN(hydro_src[mfi]),
              BL_TO_FORTRAN(grav_vector[mfi]),
              dx, &dt,
              BL_TO_FORTRAN(flux[0]),
