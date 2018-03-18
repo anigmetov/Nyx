@@ -142,7 +142,7 @@ extern "C"
      const amrex::Real dx[], const amrex::Real glo[],
      const amrex::Real* time, const int bc[]);
 
-  void fort_advance_gas
+  void fort_make_hydro_sources
     (const amrex::Real* time,
      const int lo[], const int hi[],
      const BL_FORT_FAB_ARG(state), 
