@@ -8,7 +8,7 @@
     subroutine add_grav_source(uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
                                uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
                                grav, gv_l1, gv_l2, gv_l3, gv_h1, gv_h2, gv_h3, &
-                               lo,hi,dx,dy,dz,dt,a_old,a_new,e_added,ke_added)
+                               lo,hi,dt,a_old,a_new)
 
       use amrex_fort_module, only : rt => amrex_real
       use eos_module
@@ -25,9 +25,8 @@
       real(rt)  uin( uin_l1: uin_h1, uin_l2: uin_h2, uin_l3: uin_h3,NVAR)
       real(rt) uout(uout_l1:uout_h1,uout_l2:uout_h2,uout_l3:uout_h3,NVAR)
       real(rt) grav(  gv_l1:  gv_h1,  gv_l2:  gv_h2,  gv_l3:  gv_h3,3)
-      real(rt) dx, dy, dz, dt
+      real(rt) dt
       real(rt) a_old, a_new
-      real(rt) e_added,ke_added
 
       real(rt) :: a_half, a_oldsq, a_newsq, a_newsq_inv
       real(rt) :: rho
@@ -90,21 +89,8 @@
                   call bl_error("Error:: Nyx_advection_3d.f90 :: bogus grav_source_type")
                end if
 
-               ! **** Start Diagnostics ****
-               ! This is the new (rho e) as stored in (rho E) after the gravitational work is added
-               new_ke = 0.5d0 * (uout(i,j,k,UMX)**2 + uout(i,j,k,UMY)**2 + uout(i,j,k,UMZ)**2) / &
-                                 uout(i,j,k,URHO) 
-               new_rhoeint = uout(i,j,k,UEDEN) - new_ke
- 
-                e_added =  e_added + (new_rhoeint - old_rhoeint)
-               ke_added = ke_added + (new_ke      - old_ke     )
-               ! ****   End Diagnostics ****
-
             enddo
          enddo
       enddo
-
-      ! print *,' EADDED ',lo(1),lo(2),lo(3), e_added
-      ! print *,'KEADDED ',lo(1),lo(2),lo(3),ke_added
 
       end subroutine add_grav_source

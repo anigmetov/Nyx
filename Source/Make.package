@@ -21,7 +21,10 @@ CEXE_sources += sdc_splitting.cpp
 CEXE_sources += write_info.cpp
 CEXE_sources += bl_random_c.cpp
 
+
 ifneq ($(NO_HYDRO), TRUE)
+CEXE_sources += compute_hydro_sources.cpp
+CEXE_sources += update_state_with_sources.cpp
 CEXE_sources += Nyx_hydro.cpp
 CEXE_sources += Nyx_hydro_sdc.cpp
 CEXE_sources += sum_integrated_quantities.cpp

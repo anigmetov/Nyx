@@ -384,6 +384,17 @@ public:
     void strang_hydro(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
     void    sdc_hydro(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
 
+    void compute_hydro_sources(amrex::Real time, amrex::Real dt, amrex::Real a_old, amrex::Real a_new,
+                               amrex::MultiFab& S_border, amrex::MultiFab& D_border, 
+                               amrex::MultiFab& ext_src_old, amrex::MultiFab& hydro_src, 
+                               amrex::MultiFab& grav, amrex::MultiFab& divu_cc,
+                               bool init_flux_register, bool add_to_flux_register);
+
+    void update_state_with_sources( amrex::MultiFab& S_old      , amrex::MultiFab& S_new, 
+                                    amrex::MultiFab& ext_src_old, amrex::MultiFab& hydro_src,
+                                    amrex::MultiFab& grav       , amrex::MultiFab& divu_cc,
+                                    amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
+
     void strang_first_step  (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate);
     void strang_second_step (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate);
 

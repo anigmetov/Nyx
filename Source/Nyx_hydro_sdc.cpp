@@ -23,7 +23,6 @@ Nyx::sdc_hydro (Real time,
     int sdc_iter;
     const Real prev_time    = state[State_Type].prevTime();
     const Real cur_time     = state[State_Type].curTime();
-    const int  finest_level = parent->finestLevel();
     MultiFab&  S_old        = get_old_data(State_Type);
     MultiFab&  D_old        = get_old_data(DiagEOS_Type);
     MultiFab&  S_new        = get_new_data(State_Type);
@@ -44,27 +43,6 @@ Nyx::sdc_hydro (Real time,
     // point
     enforce_nonnegative_species(S_old);
 
-    if (do_reflux && level < finest_level)
-    {
-        //
-        // Set reflux registers to zero.
-        //
-        get_flux_reg(level+1).setVal(0);
-    }
-    //
-    // Get pointers to Flux registers, or set pointer to zero if not there.
-    //
-    FluxRegister* fine    = 0;
-    FluxRegister* current = 0;
-
-    if (do_reflux && level < finest_level)
-        fine = &get_flux_reg(level+1);
-    if (do_reflux && level > 0)
-        current = &get_flux_reg(level);
-
-    const Real* dx     = geom.CellSize();
-    Real        courno = -1.0e+200;
-
     MultiFab ext_src_old(grids, dmap, NUM_STATE, 3);
     ext_src_old.setVal(0);
 
@@ -83,17 +61,7 @@ Nyx::sdc_hydro (Real time,
     grav_vector.FillBoundary(geom.periodicity());
 #endif
 
-    MultiFab fluxes[BL_SPACEDIM];
-    for (int j = 0; j < BL_SPACEDIM; j++)
-    {
-        fluxes[j].define(getEdgeBoxArray(j), dmap, NUM_STATE, 0);
-        fluxes[j].setVal(0.0);
-    }
-
     BL_ASSERT(NUM_GROW == 4);
-
-    Real  e_added = 0;
-    Real ke_added = 0;
 
     // Create FAB for extended grid values (including boundaries) and fill.
     MultiFab S_old_tmp(S_old.boxArray(), S_old.DistributionMap(), NUM_STATE, NUM_GROW);
@@ -105,6 +73,9 @@ Nyx::sdc_hydro (Real time,
     MultiFab hydro_src(grids, dmap, NUM_STATE, 0);
     hydro_src.setVal(0);
 
+    MultiFab divu_cc(grids, dmap, 1, 0);
+    divu_cc.setVal(0);
+
     FArrayBox flux[BL_SPACEDIM], u_gdnv[BL_SPACEDIM];
 
     //Begin loop over SDC iterations
@@ -113,75 +84,23 @@ Nyx::sdc_hydro (Real time,
     for (sdc_iter = 0; sdc_iter < sdc_iter_max; sdc_iter++)
     {
        amrex::Print() << "STARTING SDC_ITER LOOP " << sdc_iter << std::endl;
-      
-#ifdef _OPENMP
-#pragma omp parallel reduction(max:courno) reduction(+:e_added,ke_added)
-#endif
-          {
-          Real cflLoc = -1.e+200;
 
-          for (MFIter mfi(S_old_tmp,true); mfi.isValid(); ++mfi)
-          {
-	    const Box& bx        = mfi.tilebox();
+       bool   init_flux_register = (sdc_iter == 0);
+       bool add_to_flux_register = (sdc_iter == sdc_iter_max-1);
+       compute_hydro_sources(time,dt,a_old,a_new,S_old_tmp,D_old_tmp,
+                             ext_src_old,hydro_src,grav_vector,divu_cc,
+                             init_flux_register, add_to_flux_register);
 
-             // Allocate fabs for fluxes.
-             for (int i = 0; i < BL_SPACEDIM ; i++) {
-                 const Box &bxtmp = amrex::surroundingNodes(bx, i);
-                 flux[i].resize(bxtmp, NUM_STATE);
-                 u_gdnv[i].resize(amrex::grow(bxtmp, 1), 1);
-                 u_gdnv[i].setVal(1.e200);
-             }
+       // NOTE: WE DON'T ACTUALLY WANT TO UPDATE THE WHOLE STATE HERE
+       //       THIS IS JUST WHAT WE DO IN THE STRANG VERSION
+       update_state_with_sources(S_old_tmp,S_new,
+                                 ext_src_old,hydro_src,grav_vector,divu_cc,
+                                 dt,a_old,a_new);
 
-             FArrayBox& S_state    = S_old_tmp[mfi];
-             FArrayBox& S_stateout = S_new[mfi];
-
-#ifdef SHEAR_IMPROVED
-             FArrayBox& am_tmp = AveMom_tmp[mfi];
-#endif
-
-             Real se  = 0;
-             Real ske = 0;
-
-  	    // Get F^(n+1/2)
-
-	fort_advance_gas
-            (&time, bx.loVect(), bx.hiVect(), 
-             BL_TO_FORTRAN(S_state),
-             BL_TO_FORTRAN(S_stateout),
-             BL_TO_FORTRAN(u_gdnv[0]),
-             BL_TO_FORTRAN(u_gdnv[1]),
-             BL_TO_FORTRAN(u_gdnv[2]),
-             BL_TO_FORTRAN(ext_src_old[mfi]),
-             BL_TO_FORTRAN(hydro_src[mfi]),
-             BL_TO_FORTRAN(grav_vector[mfi]),
-             dx, &dt,
-             BL_TO_FORTRAN(flux[0]),
-             BL_TO_FORTRAN(flux[1]),
-             BL_TO_FORTRAN(flux[2]),
-             &cflLoc, &a_old, &a_new, &se, &ske, 
-             &print_fortran_warnings, &do_grav, &sdc_split);
-	
-        for (int i = 0; i < BL_SPACEDIM; ++i) 
-          fluxes[i][mfi].copy(flux[i], mfi.nodaltilebox(i));
-
-         e_added += se;
-        ke_added += ske;
-       } // end of MFIter loop
-
-        courno = std::max(courno, cflLoc);
-
-       } // end of omp parallel region
-
-       // If at last iteration of sdc, now have fluxes in stateout (S_new) as well as momentum etc
-       
        // We copy old Temp and Ne to new Temp and Ne so that they can be used
        //    as guesses when we next need them.
        MultiFab::Copy(D_new,D_old,0,0,D_old.nComp(),0);
        
-       //MultiFab::Copy(S_old_tmp,S_new,Eden,Eden,1,0);
-       /*
-       MultiFab::Copy(S_old_tmp,S_new,Eint,Eint,1,0);
-       MultiFab::Copy(S_old_tmp,S_new,0,0,S_new.nComp(),0);*/
        MultiFab::Copy(S_old_tmp,S_old,0,0,S_new.nComp(),0);
 
          // Gives us I^1 from integration with F^(n+1/2) source
@@ -216,33 +135,7 @@ Nyx::sdc_hydro (Real time,
     }
     //End loop over SDC iterations
 
-    // Fluxes
-    if (do_reflux) {
-         if (current) 
-         {
-           for (int i = 0; i < BL_SPACEDIM ; i++) 
-             current->FineAdd(fluxes[i], i, 0, 0, NUM_STATE, 1);
-         }
-         if (fine) 
-         {
-           for (int i = 0; i < BL_SPACEDIM ; i++) {
-	         fine->CrseInit(fluxes[i],i,0,0,NUM_STATE,-1.,FluxRegister::ADD);
-         }
-      }
-    }
-
     grav_vector.clear();
-
-    ParallelDescriptor::ReduceRealMax(courno);
-
-    if (courno > 1.0)
-    {
-        if (ParallelDescriptor::IOProcessor())
-            std::cout << "OOPS -- EFFECTIVE CFL AT THIS LEVEL " << level
-                      << " IS " << courno << '\n';
-
-        amrex::Abort("CFL is too high at this level -- go back to a checkpoint and restart with lower cfl number");
-    }
 
 }
 #endif

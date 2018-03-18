@@ -366,13 +366,8 @@ Nyx::advance_hydro_plus_particles (Real time,
         get_level(lev).gravity->get_old_grav_vector(lev, grav_vec_old, time);
         get_level(lev).gravity->get_new_grav_vector(lev, grav_vec_new, cur_time);
 
-        Real  e_added = 0;
-        Real ke_added = 0;
         const Real* dx = get_level(lev).Geom().CellSize();
 
-#ifdef _OPENMP
-#pragma omp parallel reduction(+:e_added,ke_added)
-#endif
         for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.tilebox();
@@ -383,37 +378,7 @@ Nyx::advance_hydro_plus_particles (Real time,
             fort_correct_gsrc
                 (bx.loVect(), bx.hiVect(), BL_TO_FORTRAN(grav_vec_old[mfi]),
                  BL_TO_FORTRAN(grav_vec_new[mfi]), BL_TO_FORTRAN(S_old[mfi]),
-                 BL_TO_FORTRAN(S_new[mfi]), &a_old, &a_new, &dt, &se, &ske);
-
-            e_added  += se;
-            ke_added += ske;
-        }
-
-        if (verbose > 2)
-        {
-            Real added[2] = {e_added,ke_added};
-
-            const int IOProc = ParallelDescriptor::IOProcessorNumber();
-
-            ParallelDescriptor::ReduceRealSum(added, 2, IOProc);
-
-            if (ParallelDescriptor::IOProcessor())
-            {
-                const Real vol = D_TERM(dx[0],*dx[1],*dx[2]);
-
-                e_added  = vol*added[0];
-                ke_added = vol*added[1];
-
-                const Real sum_added = e_added + ke_added;
-
-                std::cout << "Grav. correct work at level "
-                          << lev
-                          << " is "
-                          <<  e_added/sum_added*100
-                          << " % into (rho e) and " 
-                          << ke_added/sum_added*100
-                          << " % into (KE) " << '\n';
-            }
+                 BL_TO_FORTRAN(S_new[mfi]), &a_old, &a_new, &dt);
         }
 
         get_level(lev).compute_new_temp();
@@ -561,14 +526,9 @@ Nyx::advance_hydro (Real time,
     MultiFab grav_vec_new(grids,dmap,BL_SPACEDIM,0);
     gravity->get_new_grav_vector(level,grav_vec_new,cur_time);
 
-    Real  e_added = 0;
-    Real ke_added = 0;
     const Real* dx = geom.CellSize();
 
     // Now do corrector part of source term update
-#ifdef _OPENMP
-#pragma omp parallel reduction(+:e_added,ke_added)
-#endif
     for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
@@ -579,37 +539,7 @@ Nyx::advance_hydro (Real time,
         fort_correct_gsrc
             (bx.loVect(), bx.hiVect(), BL_TO_FORTRAN(grav_vec_old[mfi]),
              BL_TO_FORTRAN(grav_vec_new[mfi]), BL_TO_FORTRAN(S_old[mfi]),
-             BL_TO_FORTRAN(S_new[mfi]), &a_old, &a_new, &dt, &se, &ske);
-
-        e_added  += se;
-        ke_added += ske;
-    }
-
-    if (verbose > 2)
-    {
-        Real added[2] = {e_added,ke_added};
-
-        const int IOProc = ParallelDescriptor::IOProcessorNumber();
-
-        ParallelDescriptor::ReduceRealSum(added, 2, IOProc);
-
-        if (ParallelDescriptor::IOProcessor())
-        {
-            const Real vol = D_TERM(dx[0],*dx[1],*dx[2]);
-
-            e_added  = vol*added[0];
-            ke_added = vol*added[1];
-
-            const Real sum_added = e_added + ke_added;
-
-            std::cout << "Grav. correct work at level "
-                      << level
-                      << " is "
-                      << e_added/sum_added*100
-                      << " % into (rho e) and " 
-                      << ke_added/sum_added*100
-                      << " % into (KE) " << '\n'; 
-        }
+             BL_TO_FORTRAN(S_new[mfi]), &a_old, &a_new, &dt);
     }
 
     compute_new_temp();
