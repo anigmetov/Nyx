@@ -54,7 +54,7 @@ subroutine integrate_state_with_source(lo, hi, &
     integer         , intent(in) :: src_l1, src_l2, src_l3, src_h1, src_h2, src_h3
     real(rt), intent(inout) ::    state(s_l1:s_h1, s_l2:s_h2,s_l3:s_h3, NVAR)
     real(rt), intent(inout) :: diag_eos(d_l1:d_h1, d_l2:d_h2,d_l3:d_h3, NDIAG)
-    real(rt), intent(in   ) :: hydro_src(src_l1:src_h1, src_l2:src_h2,src_l3:src_h3, NDIAG)
+    real(rt), intent(in   ) :: hydro_src(src_l1:src_h1, src_l2:src_h2,src_l3:src_h3, NVAR)
     real(rt), intent(in)    :: a, delta_time
     integer         , intent(inout) :: max_iter, min_iter
 
@@ -126,6 +126,7 @@ subroutine integrate_state_with_source(lo, hi, &
 
                 ! call vode_wrapper_with_source(delta_time,rho_orig,T_orig,ne_orig,e_orig,rho_src,e_src &
                 !                                          rho_out ,T_out ,ne_out ,e_out)
+                rho_out = rho_orig
                 ne_out = ne_orig
                  e_out =  e_orig
                  T_out =  T_orig
