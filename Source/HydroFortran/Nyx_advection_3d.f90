@@ -1307,9 +1307,8 @@
                              uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
                              src ,src_l1,src_l2,src_l3,src_h1,src_h2,src_h3, &
                              hydro_src ,hsrc_l1,hsrc_l2,hsrc_l3,hsrc_h1,hsrc_h2,hsrc_h3, &
-                             grav,gv_l1,gv_l2,gv_l3,gv_h1,gv_h2,gv_h3, &
                              divu_cc,d_l1,d_l2,d_l3,d_h1,d_h2,d_h3, &
-                             dt,a_old,a_new,print_fortran_warnings,do_grav) &
+                             dt,a_old,a_new,print_fortran_warnings) &
                              bind(C, name="fort_update_state")
  
       use amrex_fort_module, only : rt => amrex_real
@@ -1321,19 +1320,17 @@
       implicit none
 
       integer, intent(in) :: lo(3), hi(3)
-      integer, intent(in) ::print_fortran_warnings,do_grav
+      integer, intent(in) ::print_fortran_warnings
       integer, intent(in) ::  uin_l1,   uin_l2,  uin_l3,  uin_h1,  uin_h2,  uin_h3
       integer, intent(in) ::  uout_l1, uout_l2, uout_l3, uout_h1, uout_h2, uout_h3
       integer, intent(in) ::   src_l1,  src_l2,  src_l3,  src_h1,  src_h2,  src_h3
       integer, intent(in) ::  hsrc_l1, hsrc_l2, hsrc_l3, hsrc_h1, hsrc_h2, hsrc_h3
-      integer, intent(in) ::  gv_l1,gv_l2,gv_l3,gv_h1,gv_h2,gv_h3
       integer, intent(in) ::  d_l1,d_l2,d_l3,d_h1,d_h2,d_h3
 
       real(rt), intent(in)  ::       uin( uin_l1: uin_h1, uin_l2: uin_h2, uin_l3: uin_h3,NVAR)
       real(rt), intent(out) ::      uout(uout_l1:uout_h1,uout_l2:uout_h2,uout_l3:uout_h3,NVAR)
       real(rt), intent(in)  ::       src( src_l1: src_h1, src_l2: src_h2, src_l3: src_h3,NVAR)
       real(rt), intent(in)  :: hydro_src(hsrc_l1:hsrc_h1,hsrc_l2:hsrc_h2,hsrc_l3:hsrc_h3,NVAR)
-      real(rt), intent(in)  ::      grav(  gv_l1:  gv_h1,  gv_l2:  gv_h2,  gv_l3:  gv_h3,   3)
       real(rt), intent(in)  ::   divu_cc(   d_l1:   d_h1,   d_l2:   d_h2,   d_l3:   d_h3)
       real(rt), intent(in)  ::  dt, a_old, a_new
 
@@ -1399,12 +1396,6 @@
                                    uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
                                    lo,hi,print_fortran_warnings)
       
-      if (do_grav .gt. 0) &
-          call add_grav_source(uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
-                               uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
-                               grav, gv_l1, gv_l2, gv_l3, gv_h1, gv_h2, gv_h3, &
-                               lo,hi,dt,a_old,a_new)
-
       ! Enforce species >= 0
       call enforce_nonnegative_species(uout,uout_l1,uout_l2,uout_l3, &
                                        uout_h1,uout_h2,uout_h3,lo,hi,0)

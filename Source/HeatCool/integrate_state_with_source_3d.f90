@@ -1,7 +1,9 @@
-subroutine integrate_state_vode(lo, hi, &
+subroutine integrate_state_with_source(lo, hi, &
                                 state   , s_l1, s_l2, s_l3, s_h1, s_h2, s_h3, &
                                 diag_eos, d_l1, d_l2, d_l3, d_h1, d_h2, d_h3, &
-                                a, half_dt, min_iter, max_iter)
+                                hydro_src, src_l1, src_l2, src_l3, src_h1, src_h2, src_h3, &
+                                a, delta_time, min_iter, max_iter) &
+                                bind(C, name="integrate_state_with_source")
 !
 !   Calculates the sources to be added later on.
 !
@@ -15,13 +17,13 @@ subroutine integrate_state_vode(lo, hi, &
 !       The state vars
 !   diag_eos_* : double arrays
 !       Temp and Ne
-!   src_* : doubles arrays
+!   hydro_src_* : doubles arrays
 !       The source terms to be added to state (iterative approx.)
 !   double array (3)
 !       The low corner of the entire domain
 !   a : double
 !       The current a
-!   half_dt : double
+!   delta_time : double
 !       time step size, in Mpc km^-1 s ~ 10^12 yr.
 !
 !   Returns
@@ -49,19 +51,23 @@ subroutine integrate_state_vode(lo, hi, &
     integer         , intent(in) :: lo(3), hi(3)
     integer         , intent(in) :: s_l1, s_l2, s_l3, s_h1, s_h2, s_h3
     integer         , intent(in) :: d_l1, d_l2, d_l3, d_h1, d_h2, d_h3
+    integer         , intent(in) :: src_l1, src_l2, src_l3, src_h1, src_h2, src_h3
     real(rt), intent(inout) ::    state(s_l1:s_h1, s_l2:s_h2,s_l3:s_h3, NVAR)
     real(rt), intent(inout) :: diag_eos(d_l1:d_h1, d_l2:d_h2,d_l3:d_h3, NDIAG)
-    real(rt), intent(in)    :: a, half_dt
+    real(rt), intent(in   ) :: hydro_src(src_l1:src_h1, src_l2:src_h2,src_l3:src_h3, NDIAG)
+    real(rt), intent(in)    :: a, delta_time
     integer         , intent(inout) :: max_iter, min_iter
 
     integer :: i, j, k
     real(rt) :: z, z_end, a_end, rho, H_reion_z, He_reion_z
-    real(rt) :: T_orig, ne_orig, e_orig
-    real(rt) :: T_out , ne_out , e_out, mu, mean_rhob, T_H, T_He
+    real(rt) :: rho_orig, T_orig, ne_orig, e_orig
+    real(rt) :: rho_out, T_out, ne_out, e_out
+    real(rt) :: rho_src, e_src
+    real(rt) :: mu, mean_rhob, T_H, T_He
     real(rt) :: species(5)
 
     z = 1.d0/a - 1.d0
-    call fort_integrate_comoving_a(a, a_end, half_dt)
+    call fort_integrate_comoving_a(a, a_end, delta_time)
     z_end = 1.0d0/a_end - 1.0d0
 
     mean_rhob = comoving_OmB * 3.d0*(comoving_h*100.d0)**2 / (8.d0*M_PI*Gconst)
@@ -90,10 +96,10 @@ subroutine integrate_state_vode(lo, hi, &
             do i = lo(1),hi(1)
 
                 ! Original values
-                rho     = state(i,j,k,URHO)
-                e_orig  = state(i,j,k,UEINT) / rho
-                T_orig  = diag_eos(i,j,k,TEMP_COMP)
-                ne_orig = diag_eos(i,j,k,  NE_COMP)
+                rho_orig  = state(i,j,k,URHO)
+                e_orig   = state(i,j,k,UEINT) / rho
+                T_orig   = diag_eos(i,j,k,TEMP_COMP)
+                ne_orig  = diag_eos(i,j,k,  NE_COMP)
 
                 if (inhomogeneous_on) then
                    H_reion_z = diag_eos(i,j,k,ZHI_COMP)
@@ -106,24 +112,27 @@ subroutine integrate_state_vode(lo, hi, &
 
                 if (e_orig .lt. 0.d0) then
                     !$OMP CRITICAL
-                    print *,'negative e entering strang integration ', z, i,j,k, rho/mean_rhob, e_orig
+                    print *,'negative e entering strang integration ', z, i,j,k, rho_orig/mean_rhob, e_orig
                     call bl_abort('bad e in strang')
                     !$OMP END CRITICAL
                 end if
+
+                rho_src = hydro_src(i,j,k,URHO)
+                  e_src = hydro_src(i,j,k,UEINT)
 
                 i_vode = i
                 j_vode = j
                 k_vode = k
 
-                ! call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
-                !                               T_out ,ne_out ,e_out)
+                ! call vode_wrapper_with_source(delta_time,rho_orig,T_orig,ne_orig,e_orig,rho_src,e_src &
+                !                                          rho_out ,T_out ,ne_out ,e_out)
                 ne_out = ne_orig
                  e_out =  e_orig
                  T_out =  T_orig
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
-                    print *,'negative e exiting strang integration ', z, i,j,k, rho/mean_rhob, e_out
+                    print *,'negative e exiting strang integration ', z, i,j,k, rho_orig/mean_rhob, e_out
                     call flush(6)
                     !$OMP END CRITICAL
                     T_out  = 10.0
@@ -134,7 +143,7 @@ subroutine integrate_state_vode(lo, hi, &
                 end if
 
                 ! Update T and ne (do not use stuff computed in f_rhs, per vode manual)
-                call nyx_eos_T_given_Re(JH_vode, JHe_vode, T_out, ne_out, rho, e_out, a, species)
+                call nyx_eos_T_given_Re(JH_vode, JHe_vode, T_out, ne_out, rho_out, e_out, a, species)
 
                 ! Instanteneous heating from reionization:
                 T_H = 0.0d0
@@ -168,22 +177,29 @@ subroutine integrate_state_vode(lo, hi, &
         end do ! j
     end do ! k
 
-end subroutine integrate_state_vode
+end subroutine integrate_state_with_source
 
-subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out)
+subroutine vode_wrapper_with_source(dt, rho_in, T_in, ne_in, e_in, rho_src, e_src, rho_out, T_out, ne_out, e_out)
 
     use amrex_fort_module, only : rt => amrex_real
     use vode_aux_module, only: rho_vode, T_vode, ne_vode, &
-                               i_vode, j_vode, k_vode
+                               i_vode, j_vode, k_vode, NR_vode, rho_src_vode, e_src_vode,&
+                               i_point, j_point, k_point
 
+    use eos_params_module
+    use fundamental_constants_module
+    use comoving_module, only: comoving_h, comoving_OmB
     implicit none
 
     real(rt), intent(in   ) :: dt
-    real(rt), intent(in   ) :: rho_in, T_in, ne_in, e_in
-    real(rt), intent(  out) ::         T_out,ne_out,e_out
+    real(rt), intent(in   ) :: rho_in,  T_in, ne_in, e_in
+    real(rt), intent(  out) :: rho_out, T_out,ne_out,e_out
+    real(rt),  intent(in   ) ::         rho_src, e_src
+
+    real(rt) mean_rhob
 
     ! Set the number of independent variables -- this should be just "e"
-    integer, parameter :: NEQ = 1
+    integer, parameter :: NEQ = 2
   
     ! Allocate storage for the input state
     real(rt) :: y(NEQ)
@@ -236,14 +252,19 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out)
     
     real(rt) :: rpar
     integer          :: ipar
+    integer          :: print_radius
+    CHARACTER(LEN=80) :: FMT
 
-    EXTERNAL jac, f_rhs
+    EXTERNAL jac, f_rhs, f_rhs_split
     
     logical, save :: firstCall = .true.
 
     T_vode   = T_in
     ne_vode  = ne_in
     rho_vode = rho_in
+    NR_vode  = 0
+    rho_src_vode = rho_src
+    e_src_vode = e_src
 
     ! We want VODE to re-initialize each time we call it
     istate = 1
@@ -257,19 +278,21 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out)
     ! Initialize the integration time
     time = 0.d0
     
-    ! We will integrate "e" in time. 
+    ! We will integrate "e" and "rho" in time. 
     y(1) = e_in
+    y(2) = rho_in
 
     ! Set the tolerances.  
     atol(1) = 1.d-4 * e_in
     rtol(1) = 1.d-4
 
     ! call the integration routine
-    call dvode(f_rhs, NEQ, y, time, dt, ITOL, rtol, atol, ITASK, &
+    call dvode(f_rhs_split, NEQ, y, time, dt, ITOL, rtol, atol, ITASK, &
                istate, IOPT, rwork, LRW, iwork, LIW, jac, MF_NUMERICAL_JAC, &
                rpar, ipar)
 
     e_out  = y(1)
+    rho_out = y(2)
     T_out  = T_vode
     ne_out = ne_vode
 
@@ -278,21 +301,4 @@ subroutine vode_wrapper(dt, rho_in, T_in, ne_in, e_in, T_out, ne_out, e_out)
        call bl_error("ERROR in vode_wrapper: integration failed")
     endif
 
-!      print *,'Calling vode with 1/4 the time step'
-!      dt4 = 0.25d0  * dt
-!      y(1) = e_in
-
-!      do n = 1,4
-!         call dvode(f_rhs, NEQ, y, time, dt4, ITOL, rtol, atol, ITASK, &
-!                    istate, IOPT, rwork, LRW, iwork, LIW, jac, MF_NUMERICAL_JAC, &
-!                    rpar, ipar)
-!         if (istate < 0) then
-!            print *, 'doing subiteration ',n
-!            print *, 'istate = ', istate, 'at (i,j,k) ',i,j,k
-!            call bl_error("ERROR in vode_wrapper: sub-integration failed")
-!         end if
-
-!      end do
-!   endif
-
-end subroutine vode_wrapper
+end subroutine vode_wrapper_with_source

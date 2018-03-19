@@ -2,10 +2,12 @@
 ! ::: ------------------------------------------------------------------
 ! :::
 
-    subroutine add_grav_source(uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+    subroutine fort_add_grav_source(lo,hi,&
+                               uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
                                uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
                                grav, gv_l1, gv_l2, gv_l3, gv_h1, gv_h2, gv_h3, &
-                               lo,hi,dt,a_old,a_new)
+                               dt,a_old,a_new) &
+                               bind(C, name="fort_add_grav_source")
 
       use amrex_fort_module, only : rt => amrex_real
       use eos_module
@@ -90,4 +92,4 @@
          enddo
       enddo
 
-      end subroutine add_grav_source
+      end subroutine fort_add_grav_source

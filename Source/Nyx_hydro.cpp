@@ -20,11 +20,15 @@ Nyx::strang_hydro (Real time,
 {
     BL_PROFILE("Nyx::strang_hydro()");
 
+    BL_ASSERT(NUM_GROW == 4);
+
     const Real prev_time    = state[State_Type].prevTime();
     const Real cur_time     = state[State_Type].curTime();
+
     MultiFab&  S_old        = get_old_data(State_Type);
-    MultiFab&  D_old        = get_old_data(DiagEOS_Type);
     MultiFab&  S_new        = get_new_data(State_Type);
+
+    MultiFab&  D_old        = get_old_data(DiagEOS_Type);
     MultiFab&  D_new        = get_new_data(DiagEOS_Type);
 
     // It's possible for interpolation to create very small negative values for
@@ -33,7 +37,7 @@ Nyx::strang_hydro (Real time,
     enforce_nonnegative_species(S_old);
 
     MultiFab ext_src_old(grids, dmap, NUM_STATE, 3);
-    ext_src_old.setVal(0);
+    ext_src_old.setVal(0.);
 
     // Define the gravity vector 
     MultiFab grav_vector(grids, dmap, BL_SPACEDIM, 3);
@@ -43,8 +47,6 @@ Nyx::strang_hydro (Real time,
     gravity->get_old_grav_vector(level, grav_vector, time);
     grav_vector.FillBoundary(geom.periodicity());
 #endif
-
-    BL_ASSERT(NUM_GROW == 4);
 
     // Create FAB for extended grid values (including boundaries) and fill.
     MultiFab S_old_tmp(S_old.boxArray(), S_old.DistributionMap(), NUM_STATE, NUM_GROW);

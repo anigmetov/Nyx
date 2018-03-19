@@ -48,9 +48,9 @@ Nyx::sdc_hydro (Real time,
     enforce_nonnegative_species(S_old);
 
     MultiFab ext_src_old(grids, dmap, NUM_STATE, 3);
-    ext_src_old.setVal(0);
+    ext_src_old.setVal(0.);
 
-    // Define the gravity vector so we can pass this to ca_umdrv.
+    // Define the gravity vector
     MultiFab grav_vector(grids, dmap, BL_SPACEDIM, 3);
     grav_vector.setVal(0.);
 
@@ -67,10 +67,10 @@ Nyx::sdc_hydro (Real time,
     FillPatch(*this, D_old_tmp, NUM_GROW, time, DiagEOS_Type, 0, D_old.nComp());
 
     MultiFab hydro_src(grids, dmap, NUM_STATE, 0);
-    hydro_src.setVal(0);
+    hydro_src.setVal(0.);
 
     MultiFab divu_cc(grids, dmap, 1, 0);
-    divu_cc.setVal(0);
+    divu_cc.setVal(0.);
 
     //Begin loop over SDC iterations
     int sdc_iter_max = 2;
@@ -105,14 +105,18 @@ Nyx::sdc_hydro (Real time,
        // ASA -- Why do we do this??  Did we change S_old_tmp at some point
        MultiFab::Copy(S_old_tmp,S_old,0,0,S_new.nComp(),0);
 
-       // Gives us I^1 from integration with F^(n+1/2) source
-       // Stores I^1 in D_new(diag1_comp) and ext_src_old(UEINT)
-
        // This step needs to do the update of (rho),  (rho e) and (rho E)
        //      AND  needs to return an updated value of I_R in the old SDC_IR statedata.
-       sdc_reaction_step(time, dt, S_old_tmp, D_new, ext_src_old, sdc_iter);
+       sdc_reactions(S_old_tmp, D_new, hydro_src, IR_old, dt, a_old, a_new, sdc_iter);
+
+       // ASA -- This is just a hack for now to see what happens
+       IR_old.setVal(0.);
 
     } //End loop over SDC iterations
+
+    // Copy IR_old (the current IR) into IR_new here so that when the pointer swap occurs
+    //     we can use IR in the next timestep
+    MultiFab::Copy(IR_new,IR_old,0,0,1,0);
 
     grav_vector.clear();
 }

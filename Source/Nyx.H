@@ -404,8 +404,10 @@ public:
     void strang_second_step (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate);
 
 #ifdef SDC
-    void sdc_reaction_step (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate,
-                            amrex::MultiFab& srcstate, int sdc_iter);
+    void sdc_reactions ( amrex::MultiFab& state, amrex::MultiFab&  dstate,
+                         amrex::MultiFab& hydro_src, amrex::MultiFab& IR, 
+                         amrex::Real dt, amrex::Real a_old, amrex::Real a_new, 
+                         int sdc_iter);
 #endif
 
     amrex::Real advance_particles_only (amrex::Real time, amrex::Real dt, int iteration, int ncycle);
