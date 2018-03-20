@@ -65,7 +65,7 @@ subroutine integrate_state_with_source(lo, hi, &
     real(rt) :: z, z_end, a_end, rho, H_reion_z, He_reion_z
     real(rt) :: rho_orig, T_orig, ne_orig, e_orig
     real(rt) :: rho_out, T_out, ne_out, e_out
-    real(rt) :: rho_src, e_src
+    real(rt) :: rho_src, rhoe_src, e_src
     real(rt) :: mu, mean_rhob, T_H, T_He
     real(rt) :: species(5)
 
@@ -121,7 +121,10 @@ subroutine integrate_state_with_source(lo, hi, &
                 end if
 
                 rho_src = hydro_src(i,j,k,URHO)
-                  e_src = hydro_src(i,j,k,UEINT)
+                rhoe_src = hydro_src(i,j,k,UEINT)
+                e_src = (state(i,j,k,UEINT) + hydro_src(i,j,k,UEINT))/ &
+                        (state(i,j,k,URHO) + hydro_src(i,j,k,URHO))- &
+                        state(i,j,k,UEINT)/state(i,j,k,URHO)
 
                 i_vode = i
                 j_vode = j
@@ -133,6 +136,10 @@ subroutine integrate_state_with_source(lo, hi, &
                 
                 if (abs((rho_out- state_n(i,j,k,URHO) )/state_n(i,j,k,URHO) ) .ge. 1e-14) then
                    print *,'DOING IJK ', i,j,k, rho_out, state_n(i,j,k,URHO) ,abs((rho_out- state_n(i,j,k,URHO) )/state_n(i,j,k,URHO) )
+                   stop
+                end if
+                if (abs((e_out- state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)  )/(state_n(i,j,k,UEINT) )/state_n(i,j,k,URHO) ) .ge. 1e-14) then
+                   print *,'DOING IJK ', i,j,k, e_out, state_n(i,j,k,UEINT) ,abs((e_out- state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)  )/(state_n(i,j,k,UEINT) )/state_n(i,j,k,URHO) ) 
                    stop
                 end if
                 rho_out = rho_orig

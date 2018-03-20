@@ -89,15 +89,16 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
          ! Convert to the actual term to be used in e_out = e_in + dt*energy
          energy  = energy / rho_vode * (1.0d0+z_vode)
          ne_vode = ne_vode / nh
-      if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
-           ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  ) then
+!      if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
+!           ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  ) then
 !         print *, 'at i=',i_vode,'j=',j_vode,'k=',k_vode, 'fn_vode='fn_vode, 'NR_vode=', NR_vode        
 !       print *, 'TMAX', energy, 'at (i,j,k) ',i_vode,j_vode,k_vode
-       print *, 'enr = ', energy, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!       print *, 'enr = ', energy, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!       print *, 'enr = ', e_src_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
 !       print *, 'rho_heat = ', rho_heat, 'at (i,j,k) ',i_vode,j_vode,k_vode
-       print *, 'rho = ', rho_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
-      end if
-         yp_out(1) = 0.d0*energy + 0.d0 * e_src_vode*a
+!       print *, 'rho = ', rho_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!      end if
+         yp_out(1) = 0.d0*energy + e_src_vode
          yp_out(2) = rho_src_vode
          return
       end if
@@ -142,23 +143,24 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
       a = 1.d0 / (1.d0 + z_vode)
       energy = (energy) / rho_vode / a
 
-      yp_out(1) = 0.d0*(energy + e_src_vode * a)
+      yp_out(1) = 0.d0*(energy) + e_src_vode
       yp_out(2) = rho_src_vode
 
 !     FMT = "(A6, I4, ES15.5, ES15.5E3, ES15.5, ES15.5, ES15.5, ES15.5)"
 !     print(FMT), 'fypsrc:',fn_vode,yp_out(1),yp_out(2),rho_src_vode,e_src_vode, a, time
 
-      if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
-           ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  ) then
+!      if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
+!           ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  ) then
 !         print *, 'at i=',i_vode,'j=',j_vode,'k=',k_vode, 'fn_vode='fn_vode, 'NR_vode=', NR_vode        
 !       print *, 'TMED', energy, 'at (i,j,k) ',i_vode,j_vode,k_vode
-       print *, 'energy = ', energy, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!       print *, 'energy = ', energy, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!       print *, 'e_src_vode = ', e_src_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
 !       print *, 'rho_heat = ', rho_heat, 'at (i,j,k) ',i_vode,j_vode,k_vode
-       print *, 'rho_vd = ', rho_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
-       print *, 'rho_sr = ', rho_src_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
-      FMT = "(A6, I4, ES21.14,  ES21.14)"
-      print(FMT), 'rhovd:',fn_vode,time, rho_vode
-      end if
+!       print *, 'rho_vd = ', rho_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!       print *, 'rho_sr = ', rho_src_vode, 'at (i,j,k) ',i_vode,j_vode,k_vode
+!      FMT = "(A6, I4, ES21.14,  ES21.14)"
+!      print(FMT), 'rhovd:',fn_vode,time, rho_vode
+!      end if
 
 end subroutine f_rhs_split
 
