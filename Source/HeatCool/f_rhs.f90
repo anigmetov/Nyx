@@ -43,7 +43,7 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
 
       e_in = y_in(1)
       rho_vode = y_in(2)
-      rho_vode = rho_init_vode + time * rho_src_vode
+!      rho_vode = rho_init_vode + time * rho_src_vode
 
       if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
            ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  ) then

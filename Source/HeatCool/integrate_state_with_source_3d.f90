@@ -297,6 +297,9 @@ subroutine vode_wrapper_with_source(dt, rho_in, T_in, ne_in, e_in, rho_src, e_sr
     atol(1) = 1.d-4 * e_in
     rtol(1) = 1.d-4
 
+    atol(2) = 1.d-4 * rho_in
+    rtol(2) = 1.d-4
+
     ! call the integration routine
     call dvode(f_rhs_split, NEQ, y, time, dt, ITOL, rtol, atol, ITASK, &
                istate, IOPT, rwork, LRW, iwork, LIW, jac, MF_NUMERICAL_JAC, &
