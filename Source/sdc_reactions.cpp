@@ -6,7 +6,7 @@ using namespace amrex;
 using std::string;
 
 void
-Nyx::sdc_reactions (MultiFab& S_old, MultiFab& D_old, 
+Nyx::sdc_reactions (MultiFab& S_old, MultiFab& S_new, MultiFab& D_old, 
                     MultiFab& hydro_src, MultiFab& IR,
                     Real delta_time, Real a_old, Real a_new, int sdc_iter)
 {
@@ -28,6 +28,7 @@ Nyx::sdc_reactions (MultiFab& S_old, MultiFab& D_old,
     int  max_iter =      0;
 
     int  min_iter_grid, max_iter_grid;
+    std::cout << "A_OLD IN SDC_REACT " << a_old << std::endl;
     
 #ifdef _OPENMP
 #pragma omp parallel
@@ -43,6 +44,7 @@ Nyx::sdc_reactions (MultiFab& S_old, MultiFab& D_old,
         integrate_state_with_source
                 (bx.loVect(), bx.hiVect(), 
                  BL_TO_FORTRAN(S_old[mfi]),
+                 BL_TO_FORTRAN(S_new[mfi]),
                  BL_TO_FORTRAN(D_old[mfi]),
 		 BL_TO_FORTRAN(hydro_src[mfi]),
                  &a_old, &delta_time, &min_iter_grid, &max_iter_grid);

@@ -1,5 +1,6 @@
 subroutine integrate_state_with_source(lo, hi, &
                                 state   , s_l1, s_l2, s_l3, s_h1, s_h2, s_h3, &
+                                state_n ,sn_l1,sn_l2,sn_l3,sn_h1,sn_h2,sn_h3, &
                                 diag_eos, d_l1, d_l2, d_l3, d_h1, d_h2, d_h3, &
                                 hydro_src, src_l1, src_l2, src_l3, src_h1, src_h2, src_h3, &
                                 a, delta_time, min_iter, max_iter) &
@@ -50,9 +51,11 @@ subroutine integrate_state_with_source(lo, hi, &
 
     integer         , intent(in) :: lo(3), hi(3)
     integer         , intent(in) :: s_l1, s_l2, s_l3, s_h1, s_h2, s_h3
+    integer         , intent(in) :: sn_l1, sn_l2, sn_l3, sn_h1, sn_h2, sn_h3
     integer         , intent(in) :: d_l1, d_l2, d_l3, d_h1, d_h2, d_h3
     integer         , intent(in) :: src_l1, src_l2, src_l3, src_h1, src_h2, src_h3
     real(rt), intent(inout) ::    state(s_l1:s_h1, s_l2:s_h2,s_l3:s_h3, NVAR)
+    real(rt), intent(inout) ::  state_n(sn_l1:sn_h1, sn_l2:sn_h2,sn_l3:sn_h3, NVAR)
     real(rt), intent(inout) :: diag_eos(d_l1:d_h1, d_l2:d_h2,d_l3:d_h3, NDIAG)
     real(rt), intent(in   ) :: hydro_src(src_l1:src_h1, src_l2:src_h2,src_l3:src_h3, NVAR)
     real(rt), intent(in)    :: a, delta_time
@@ -97,7 +100,7 @@ subroutine integrate_state_with_source(lo, hi, &
 
                 ! Original values
                 rho_orig  = state(i,j,k,URHO)
-                e_orig   = state(i,j,k,UEINT) / rho
+                e_orig   = state(i,j,k,UEINT) / rho_orig
                 T_orig   = diag_eos(i,j,k,TEMP_COMP)
                 ne_orig  = diag_eos(i,j,k,  NE_COMP)
 
@@ -124,8 +127,14 @@ subroutine integrate_state_with_source(lo, hi, &
                 j_vode = j
                 k_vode = k
 
-                ! call vode_wrapper_with_source(delta_time,rho_orig,T_orig,ne_orig,e_orig,rho_src,e_src &
-                !                                          rho_out ,T_out ,ne_out ,e_out)
+!                print *,'PASSING IN ', rho_orig, T_orig, ne_orig, e_orig
+                call vode_wrapper_with_source(delta_time,rho_orig,T_orig,ne_orig,e_orig,rho_src,e_src, &
+                                                         rho_out ,T_out ,ne_out ,e_out)
+                
+                if (abs((rho_out- state_n(i,j,k,URHO) )/state_n(i,j,k,URHO) ) .ge. 1e-14) then
+                   print *,'DOING IJK ', i,j,k, rho_out, state_n(i,j,k,URHO) ,abs((rho_out- state_n(i,j,k,URHO) )/state_n(i,j,k,URHO) )
+                   stop
+                end if
                 rho_out = rho_orig
                 ne_out = ne_orig
                  e_out =  e_orig
@@ -167,12 +176,12 @@ subroutine integrate_state_with_source(lo, hi, &
                 endif
 
                 ! Update (rho e) and (rho E)
-                state(i,j,k,UEINT) = state(i,j,k,UEINT) + rho * (e_out-e_orig)
-                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + rho * (e_out-e_orig)
+                ! state_n(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_orig * (e_out-e_orig)
+                ! state_n(i,j,k,UEDEN) = state(i,j,k,UEDEN) + rho_orig * (e_out-e_orig)
 
                 ! Update T and ne
-                diag_eos(i,j,k,TEMP_COMP) = T_out
-                diag_eos(i,j,k,  NE_COMP) = ne_out
+                ! diag_eos(i,j,k,TEMP_COMP) = T_out
+                ! diag_eos(i,j,k,  NE_COMP) = ne_out
 
             end do ! i
         end do ! j
@@ -185,7 +194,7 @@ subroutine vode_wrapper_with_source(dt, rho_in, T_in, ne_in, e_in, rho_src, e_sr
     use amrex_fort_module, only : rt => amrex_real
     use vode_aux_module, only: rho_vode, T_vode, ne_vode, &
                                i_vode, j_vode, k_vode, NR_vode, rho_src_vode, e_src_vode,&
-                               i_point, j_point, k_point
+                               i_point, j_point, k_point, rho_init_vode
 
     use eos_params_module
     use fundamental_constants_module
@@ -263,9 +272,10 @@ subroutine vode_wrapper_with_source(dt, rho_in, T_in, ne_in, e_in, rho_src, e_sr
     T_vode   = T_in
     ne_vode  = ne_in
     rho_vode = rho_in
+    rho_init_vode = rho_in
     NR_vode  = 0
-    rho_src_vode = rho_src
-    e_src_vode = e_src
+    rho_src_vode = rho_src / dt
+    e_src_vode = e_src / dt
 
     ! We want VODE to re-initialize each time we call it
     istate = 1

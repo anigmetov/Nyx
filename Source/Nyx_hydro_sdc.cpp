@@ -107,7 +107,7 @@ Nyx::sdc_hydro (Real time,
 
        // This step needs to do the update of (rho),  (rho e) and (rho E)
        //      AND  needs to return an updated value of I_R in the old SDC_IR statedata.
-       sdc_reactions(S_old_tmp, D_new, hydro_src, IR_old, dt, a_old, a_new, sdc_iter);
+       sdc_reactions(S_old_tmp, S_new, D_new, hydro_src, IR_old, dt, a_old, a_new, sdc_iter);
 
        // ASA -- This is just a hack for now to see what happens
        IR_old.setVal(0.);

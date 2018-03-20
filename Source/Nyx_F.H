@@ -280,7 +280,8 @@ extern "C"
 
   void integrate_state_with_source
     (const int* lo, const int* hi,
-     BL_FORT_FAB_ARG(state),
+     BL_FORT_FAB_ARG(state_old),
+     BL_FORT_FAB_ARG(state_new),
      BL_FORT_FAB_ARG(diag_eos),
      BL_FORT_FAB_ARG(hydro_src),
      const amrex::Real* a, const amrex::Real* delta_time, 

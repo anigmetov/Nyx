@@ -404,7 +404,7 @@ public:
     void strang_second_step (amrex::Real time, amrex::Real dt,  amrex::MultiFab& state, amrex::MultiFab&  dstate);
 
 #ifdef SDC
-    void sdc_reactions ( amrex::MultiFab& state, amrex::MultiFab&  dstate,
+    void sdc_reactions ( amrex::MultiFab& state_old, amrex::MultiFab& state_new, amrex::MultiFab&  dstate,
                          amrex::MultiFab& hydro_src, amrex::MultiFab& IR, 
                          amrex::Real dt, amrex::Real a_old, amrex::Real a_new, 
                          int sdc_iter);
