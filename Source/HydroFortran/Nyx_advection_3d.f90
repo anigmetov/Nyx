@@ -1271,6 +1271,8 @@
                           +   flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * volinv 
                   endif
 
+                  hydro_src(i,j,k,n) = hydro_src(i,j,k,n) / dt
+
                enddo
             enddo
          enddo
@@ -1355,33 +1357,36 @@
 
                   ! Density
                   if (n .eq. URHO) then
-                     uout(i,j,k,n) = uin(i,j,k,n) + hydro_src(i,j,k,n) &
+                     uout(i,j,k,n) = uin(i,j,k,n) + dt * hydro_src(i,j,k,n) &
                                     + dt *  src(i,j,k,n) * a_half_inv
 
                   ! Momentum
                   else if (n .ge. UMX .and. n .le. UMZ) then
-                     uout(i,j,k,n) = a_old * uin(i,j,k,n) + hydro_src(i,j,k,n) &
+                     uout(i,j,k,n) = a_old * uin(i,j,k,n) + dt * hydro_src(i,j,k,n) &
                                     + dt   * src(i,j,k,n)
                      uout(i,j,k,n) = uout(i,j,k,n) * a_new_inv
 
                   ! (rho E)
                   else if (n .eq. UEDEN) then
-                     uout(i,j,k,n) =  a_oldsq * uin(i,j,k,n) + hydro_src(i,j,k,n) &
+                     uout(i,j,k,n) =  a_oldsq * uin(i,j,k,n) + dt * hydro_src(i,j,k,n) &
                                     + a_half  * dt * src(i,j,k,n)  
                      uout(i,j,k,n) = uout(i,j,k,n) * a_newsq_inv
 
                   ! (rho e)
                   else if (n .eq. UEINT) then
 
-                     uout(i,j,k,n) =  a_oldsq*uin(i,j,k,n) + hydro_src(i,j,k,n) &
+                     uout(i,j,k,n) =  a_oldsq*uin(i,j,k,n) + dt * hydro_src(i,j,k,n) &
                                     + a_half * dt * src(i,j,k,n) 
 
-                     uout(i,j,k,n) = uout(i,j,k,n) * a_newsq_inv / &
-                         ( ONE + a_half * dt * (HALF * gamma_minus_1 * divu_cc(i,j,k)) * a_newsq_inv )
+                     uout(i,j,k,n) = uout(i,j,k,n) * a_newsq_inv 
+
+!                    We don't do this here because we are adding all of this term explicitly in hydro_src
+!                    uout(i,j,k,n) = uout(i,j,k,n) * a_newsq_inv / &
+!                        ( ONE + a_half * dt * (HALF * gamma_minus_1 * divu_cc(i,j,k)) * a_newsq_inv )
 
                   ! (rho X_i) and (rho adv_i) and (rho aux_i)
                   else
-                     uout(i,j,k,n) = uin(i,j,k,n) +  hydro_src(i,j,k,n) &
+                     uout(i,j,k,n) = uin(i,j,k,n) +  dt * hydro_src(i,j,k,n) &
                                     + dt * src(i,j,k,n) * a_half_inv
 
                   endif
