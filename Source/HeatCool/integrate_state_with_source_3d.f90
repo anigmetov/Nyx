@@ -122,18 +122,31 @@ subroutine integrate_state_with_source(lo, hi, &
 
                 rho_src = hydro_src(i,j,k,URHO)
                 rhoe_src = hydro_src(i,j,k,UEINT)
-                e_src = (state(i,j,k,UEINT) + hydro_src(i,j,k,UEINT))/ &
-                        (state(i,j,k,URHO) + hydro_src(i,j,k,URHO))- &
-                        state(i,j,k,UEINT)/state(i,j,k,URHO)
+
+!                        src(i,j,k,UMX) = (uin(i,j,k,UEINT) * a_oldsq + dt * src(i,j,k,UEINT) *a_newsq) &
+!                                         / (uin(i,j,k,URHO) + dt * src(i,j,k,URHO)) &
+!                                         - (uin(i,j,k,UEINT) * a_oldsq )/ (uin(i,j,k,URHO))
+!                        src(i,j,k,UMX) = src(i,j,k,UMX)*a_newsq_inv
+
+                e_src = ((state(i,j,k,UEINT) *a*a + delta_time * hydro_src(i,j,k,UEINT))/a_end/a_end / &
+                        (state(i,j,k,URHO) + delta_time * hydro_src(i,j,k,URHO))- &
+                        (state(i,j,k,UEINT)/state(i,j,k,URHO)) )/delta_time
+
+!                e_src = (state_n(i,j,k,UEINT)/ &
+!                         (state(i,j,k,URHO) + delta_time * hydro_src(i,j,k,URHO))- &
+!                        state(i,j,k,UEINT) /state(i,j,k,URHO)) / delta_time
+
+!                print*, (state(i,j,k,UEINT) *a*a + delta_time * hydro_src(i,j,k,UEINT)) - (a_end*a_end*state_n(i,j,k,UEINT))
 
                 i_vode = i
                 j_vode = j
                 k_vode = k
-
 !                print *,'PASSING IN ', rho_orig, T_orig, ne_orig, e_orig
                 call vode_wrapper_with_source(delta_time,rho_orig,T_orig,ne_orig,e_orig,rho_src,e_src, &
                                                          rho_out ,T_out ,ne_out ,e_out)
-                
+                if(.FALSE.) print*,state_n(i,j,k,UEINT)/state_n(i,j,k,URHO), &
+                        (state(i,j,k,UEINT)+ delta_time*hydro_src(i,j,k,UEINT) )/ state_n(i,j,k,URHO) *a*a/a_end/a_end, (e_out), (state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)-e_out)/(state_n(i,j,k,UEINT)/state_n(i,j,k,URHO))
+
                 if (abs((rho_out- state_n(i,j,k,URHO) )/state_n(i,j,k,URHO) ) .ge. 1e-14) then
                    print *,'DOING IJK ', i,j,k, rho_out, state_n(i,j,k,URHO) ,abs((rho_out- state_n(i,j,k,URHO) )/state_n(i,j,k,URHO) )
                    stop
@@ -142,6 +155,15 @@ subroutine integrate_state_with_source(lo, hi, &
                    print *,'DOING IJK ', i,j,k, e_out, state_n(i,j,k,UEINT) ,abs((e_out- state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)  )/(state_n(i,j,k,UEINT) )/state_n(i,j,k,URHO) ) 
                    stop
                 end if
+!                if (abs((rho_out*e_out- state_n(i,j,k,UEINT) )/state_n(i,j,k,UEINT)) .ge. 1e-14) then
+                if (abs((state_n(i,j,k,URHO)*e_out- state_n(i,j,k,UEINT) )/state_n(i,j,k,UEINT)) .ge. 1e-14) then
+                   print *,'DOING IJK ', i,j,k, rho_out*e_out, state_n(i,j,k,UEINT) , abs((rho_out*e_out- state_n(i,j,k,UEINT) )/state_n(i,j,k,UEINT)  ) 
+                   print*, "e values", e_out, state_n(i,j,k,UEINT)/state_n(i,j,k,URHO), e_src
+                   print*,state_n(i,j,k,UEINT)/state_n(i,j,k,URHO), &
+                        (state(i,j,k,UEINT)+ delta_time*hydro_src(i,j,k,UEINT) )/ state_n(i,j,k,URHO) *a*a/a_end/a_end, (e_out), (state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)-e_out)/(state_n(i,j,k,UEINT)/state_n(i,j,k,URHO))
+                   stop
+                end if
+
                 rho_out = rho_orig
                 ne_out = ne_orig
                  e_out =  e_orig
@@ -281,8 +303,8 @@ subroutine vode_wrapper_with_source(dt, rho_in, T_in, ne_in, e_in, rho_src, e_sr
     rho_vode = rho_in
     rho_init_vode = rho_in
     NR_vode  = 0
-    rho_src_vode = rho_src / dt
-    e_src_vode = e_src / dt
+    rho_src_vode = rho_src
+    e_src_vode = e_src
 
     ! We want VODE to re-initialize each time we call it
     istate = 1
