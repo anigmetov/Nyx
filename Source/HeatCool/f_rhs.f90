@@ -89,7 +89,7 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
          ! Convert to the actual term to be used in e_out = e_in + dt*energy
          energy  = energy / rho_vode * (1.0d0+z_vode)
          ne_vode = ne_vode / nh
-         yp_out(1) = 0.d0*energy + e_src_vode
+         yp_out(1) = energy + e_src_vode
          yp_out(2) = rho_src_vode
          return
       end if
@@ -134,7 +134,7 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
       a = 1.d0 / (1.d0 + z_vode)
       energy = (energy) / rho_vode / a
 
-      yp_out(1) = 0.d0*(energy) + e_src_vode
+      yp_out(1) = energy + e_src_vode
       yp_out(2) = rho_src_vode
 
 
@@ -213,7 +213,6 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
 
          ! Convert to the actual term to be used in e_out = e_in + dt*energy
          energy  = energy / rho_vode * (1.0d0+z_vode)
-         energy = 0.d0*energy
          ne_vode = ne_vode / nh
       end if
 
@@ -255,7 +254,7 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
 
       ! Convert to the actual term to be used in e_out = e_in + dt*energy
       a = 1.d0 / (1.d0 + z_vode)
-      energy = 0.d0 * energy / rho_vode / a
+      energy = energy / rho_vode / a
 
 end subroutine f_rhs
 
