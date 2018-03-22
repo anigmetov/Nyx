@@ -284,6 +284,7 @@ extern "C"
      BL_FORT_FAB_ARG(state_new),
      BL_FORT_FAB_ARG(diag_eos),
      BL_FORT_FAB_ARG(hydro_src),
+     BL_FORT_FAB_ARG(IR),
      const amrex::Real* a, const amrex::Real* delta_time, 
      const int* min_iter, const int* max_iter);
 

@@ -3,6 +3,7 @@ subroutine integrate_state_with_source(lo, hi, &
                                 state_n ,sn_l1,sn_l2,sn_l3,sn_h1,sn_h2,sn_h3, &
                                 diag_eos, d_l1, d_l2, d_l3, d_h1, d_h2, d_h3, &
                                 hydro_src, src_l1, src_l2, src_l3, src_h1, src_h2, src_h3, &
+                                I_R, ir_l1, ir_l2, ir_l3, ir_h1, ir_h2, ir_h3, &
                                 a, delta_time, min_iter, max_iter) &
                                 bind(C, name="integrate_state_with_source")
 !
@@ -54,14 +55,17 @@ subroutine integrate_state_with_source(lo, hi, &
     integer         , intent(in) :: sn_l1, sn_l2, sn_l3, sn_h1, sn_h2, sn_h3
     integer         , intent(in) :: d_l1, d_l2, d_l3, d_h1, d_h2, d_h3
     integer         , intent(in) :: src_l1, src_l2, src_l3, src_h1, src_h2, src_h3
-    real(rt), intent(inout) ::    state(s_l1:s_h1, s_l2:s_h2,s_l3:s_h3, NVAR)
+    integer         , intent(in) :: ir_l1, ir_l2, ir_l3, ir_h1, ir_h2, ir_h3
+    real(rt), intent(in   ) ::    state(s_l1:s_h1, s_l2:s_h2,s_l3:s_h3, NVAR)
     real(rt), intent(inout) ::  state_n(sn_l1:sn_h1, sn_l2:sn_h2,sn_l3:sn_h3, NVAR)
-    real(rt), intent(inout) :: diag_eos(d_l1:d_h1, d_l2:d_h2,d_l3:d_h3, NDIAG)
+    real(rt), intent(in   ) :: diag_eos(d_l1:d_h1, d_l2:d_h2,d_l3:d_h3, NDIAG)
     real(rt), intent(in   ) :: hydro_src(src_l1:src_h1, src_l2:src_h2,src_l3:src_h3, NVAR)
+    real(rt), intent(inout) :: I_R(ir_l1:ir_h1, ir_l2:ir_h2,ir_l3:ir_h3)
     real(rt), intent(in)    :: a, delta_time
     integer         , intent(inout) :: max_iter, min_iter
 
     integer :: i, j, k
+    real(rt) :: asq,aendsq,delta_rho,delta_e
     real(rt) :: z, z_end, a_end, rho, H_reion_z, He_reion_z
     real(rt) :: rho_orig, T_orig, ne_orig, e_orig
     real(rt) :: rho_out, T_out, ne_out, e_out
@@ -72,6 +76,9 @@ subroutine integrate_state_with_source(lo, hi, &
     z = 1.d0/a - 1.d0
     call fort_integrate_comoving_a(a, a_end, delta_time)
     z_end = 1.0d0/a_end - 1.0d0
+ 
+    asq = a*a
+    aendsq = a_end*a_end
 
     mean_rhob = comoving_OmB * 3.d0*(comoving_h*100.d0)**2 / (8.d0*M_PI*Gconst)
 
@@ -120,58 +127,51 @@ subroutine integrate_state_with_source(lo, hi, &
                     !$OMP END CRITICAL
                 end if
 
-                rho_src = hydro_src(i,j,k,URHO)
+                rho_src  = hydro_src(i,j,k,URHO)
                 rhoe_src = hydro_src(i,j,k,UEINT)
 
-!                        src(i,j,k,UMX) = (uin(i,j,k,UEINT) * a_oldsq + dt * src(i,j,k,UEINT) *a_newsq) &
-!                                         / (uin(i,j,k,URHO) + dt * src(i,j,k,URHO)) &
-!                                         - (uin(i,j,k,UEINT) * a_oldsq )/ (uin(i,j,k,URHO))
-!                        src(i,j,k,UMX) = src(i,j,k,UMX)*a_newsq_inv
-
-                e_src = ((state(i,j,k,UEINT) *a*a + delta_time * hydro_src(i,j,k,UEINT))/a_end/a_end / &
-                        (state(i,j,k,URHO) + delta_time * hydro_src(i,j,k,URHO))- &
-                        (state(i,j,k,UEINT)/state(i,j,k,URHO)) )/delta_time
-
-!                e_src = (state_n(i,j,k,UEINT)/ &
-!                         (state(i,j,k,URHO) + delta_time * hydro_src(i,j,k,URHO))- &
-!                        state(i,j,k,UEINT) /state(i,j,k,URHO)) / delta_time
-
-!                print*, (state(i,j,k,UEINT) *a*a + delta_time * hydro_src(i,j,k,UEINT)) - (a_end*a_end*state_n(i,j,k,UEINT))
+                e_src = ( (asq*state(i,j,k,UEINT) + delta_time * hydro_src(i,j,k,UEINT) ) / aendsq / &
+                        (      state(i,j,k,URHO ) + delta_time * hydro_src(i,j,k,URHO)) - e_orig) / delta_time
 
                 i_vode = i
                 j_vode = j
                 k_vode = k
-!                print *,'PASSING IN ', rho_orig, T_orig, ne_orig, e_orig
+
                 call vode_wrapper_with_source(delta_time,rho_orig,T_orig,ne_orig,e_orig,rho_src,e_src, &
                                                          rho_out ,T_out ,ne_out ,e_out)
-                if(.FALSE.) print*,state_n(i,j,k,UEINT)/state_n(i,j,k,URHO), &
-                        (state(i,j,k,UEINT)+ delta_time*hydro_src(i,j,k,UEINT) )/ state_n(i,j,k,URHO) *a*a/a_end/a_end, (e_out), (state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)-e_out)/(state_n(i,j,k,UEINT)/state_n(i,j,k,URHO))
 
-                if (abs((rho_out- state_n(i,j,k,URHO) )/state_n(i,j,k,URHO) ) .ge. 1e-14) then
-                   print *,'DOING IJK ', i,j,k, rho_out, state_n(i,j,k,URHO) ,abs((rho_out- state_n(i,j,k,URHO) )/state_n(i,j,k,URHO) )
-                   stop
-                end if
-                if (abs((e_out- state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)  )/(state_n(i,j,k,UEINT) )/state_n(i,j,k,URHO) ) .ge. 1e-14) then
-                   print *,'DOING IJK ', i,j,k, e_out, state_n(i,j,k,UEINT) ,abs((e_out- state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)  )/(state_n(i,j,k,UEINT) )/state_n(i,j,k,URHO) ) 
-                   stop
-                end if
-!                if (abs((rho_out*e_out- state_n(i,j,k,UEINT) )/state_n(i,j,k,UEINT)) .ge. 1e-14) then
-                if (abs((state_n(i,j,k,URHO)*e_out- state_n(i,j,k,UEINT) )/state_n(i,j,k,UEINT)) .ge. 1e-14) then
-                   print *,'DOING IJK ', i,j,k, rho_out*e_out, state_n(i,j,k,UEINT) , abs((rho_out*e_out- state_n(i,j,k,UEINT) )/state_n(i,j,k,UEINT)  ) 
-                   print*, "e values", e_out, state_n(i,j,k,UEINT)/state_n(i,j,k,URHO), e_src
-                   print*,state_n(i,j,k,UEINT)/state_n(i,j,k,URHO), &
-                        (state(i,j,k,UEINT)+ delta_time*hydro_src(i,j,k,UEINT) )/ state_n(i,j,k,URHO) *a*a/a_end/a_end, (e_out), (state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)-e_out)/(state_n(i,j,k,UEINT)/state_n(i,j,k,URHO))
+                delta_rho = rho_out- state_n(i,j,k,URHO)
+
+                if ( abs(delta_rho/rho_out) .ge. 1e-14) then
+                   print *,'RHO:DOING IJK ', i,j,k, rho_out, state_n(i,j,k,URHO) ,abs((rho_out- state_n(i,j,k,URHO) )/state_n(i,j,k,URHO) )
                    stop
                 end if
 
-                rho_out = rho_orig
+                delta_e   =   e_out- state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)
+                if ( abs(delta_e/e_out) .ge. 1e-14) then
+                   print *,'  E:DOING IJK ', i,j,k, e_out, state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)
+                   stop
+                end if
+
+                I_R(i,j,k) = (aendsq * rho_out * e_out) - (asq * rho_orig * e_orig) - rhoe_src
+
+                if ( abs(I_R(i,j,k)/aendsq*state_n(i,j,k,UEINT)) .gt. 1.e-14 ) then
+                   print *,'I_R:DOING IJK ', i,j,k, I_R(i,j,k)
+                   print *,'HYDRO_SRC ', rhoe_src
+                   print *,'aendsq*rho_out*e_out ' ,aendsq*rho_out*e_out
+                   print *,'asq*rho_orig*e_orig ' ,asq*rho_orig*e_orig
+                   print *,'dt ',delta_time
+                   print *,'src ',rhoe_src*delta_time
+                   stop
+                end if
+
                 ne_out = ne_orig
-                 e_out =  e_orig
                  T_out =  T_orig
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
-                    print *,'negative e exiting strang integration ', z, i,j,k, rho_orig/mean_rhob, e_out
+                    print *,'negative e exiting strang integration ', z, i,j,k, rho_orig/mean_rhob, e_out, &
+                             state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)
                     call flush(6)
                     !$OMP END CRITICAL
                     T_out  = 10.0

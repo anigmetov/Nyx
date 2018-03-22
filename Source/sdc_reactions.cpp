@@ -28,7 +28,6 @@ Nyx::sdc_reactions (MultiFab& S_old, MultiFab& S_new, MultiFab& D_old,
     int  max_iter =      0;
 
     int  min_iter_grid, max_iter_grid;
-    std::cout << "A_OLD IN SDC_REACT " << a_old << std::endl;
     
 #ifdef _OPENMP
 #pragma omp parallel
@@ -47,6 +46,7 @@ Nyx::sdc_reactions (MultiFab& S_old, MultiFab& S_new, MultiFab& D_old,
                  BL_TO_FORTRAN(S_new[mfi]),
                  BL_TO_FORTRAN(D_old[mfi]),
 		 BL_TO_FORTRAN(hydro_src[mfi]),
+		 BL_TO_FORTRAN(IR[mfi]),
                  &a_old, &delta_time, &min_iter_grid, &max_iter_grid);
 
         min_iter = std::min(min_iter,min_iter_grid);
