@@ -166,11 +166,11 @@ subroutine integrate_state_with_source(lo, hi, &
 !                print*,(rho_out*e_out - ((asq*rho_orig* e_orig + delta_time*rhoe_src))/aendsq)/(rho_out*e_out) 
                 I_R(i,j,k) = (rho_out *e_out-((asq*rho_orig* e_orig + delta_time*rhoe_src))/aendsq) / delta_time 
 
-                I_R(i,j,k) = (aendsq * rho_out *e_out-((asq*rho_orig* e_orig + delta_time*rhoe_src))) / delta_time
+                I_R(i,j,k) = (aendsq * rho_out *e_out-((asq*rho_orig* e_orig + delta_time*rhoe_src))) / delta_time * ahalf_inv
 
 !                I_R(i,j,k) = (aendsq * rho_out *e_out-(aendsq*state_n(i,j,k,UEINT))) / delta_time 
 
-                if ( abs(I_R(i,j,k)/(aendsq*state_n(i,j,k,UEINT)/delta_time)) .gt. 1.e-14 ) then
+                if ( abs(I_R(i,j,k)/(aendsq*state_n(i,j,k,UEINT)/delta_time*ahalf_inv)) .gt. 1.e-14 ) then
                    print *,'I_R:DOING IJK ', i,j,k, I_R(i,j,k)
                    print *,'HYDRO_SRC ', rhoe_src
                    print *,'aendsq*rho_out*e_out ' ,aendsq*rho_out*e_out

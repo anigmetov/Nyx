@@ -23,6 +23,7 @@ Nyx::sdc_hydro (Real time,
     BL_ASSERT(NUM_GROW == 4);
 
     int sdc_iter;
+    Real IR_fac;
     const Real prev_time    = state[State_Type].prevTime();
     const Real cur_time     = state[State_Type].curTime();
 
@@ -108,8 +109,9 @@ Nyx::sdc_hydro (Real time,
        sdc_reactions(S_old_tmp, S_new, D_new, hydro_src, IR_old, dt, a_old, a_new, sdc_iter);
 
        // We add IR_old from sdc_reactions to (rho e) and (rho E)
-       MultiFab::Saxpy(S_new,dt,IR_old,0,Eden,1,0);
-       MultiFab::Saxpy(S_new,dt,IR_old,0,Eint,1,0);
+       IR_fac = (a_old + a_new) * 0.5 * dt;
+       MultiFab::Saxpy(S_new,IR_fac,IR_old,0,Eden,1,0);
+       MultiFab::Saxpy(S_new,IR_fac,IR_old,0,Eint,1,0);
 
     } //End loop over SDC iterations
 
