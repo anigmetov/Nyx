@@ -1,6 +1,7 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step = 10000000
 max_step = 400
+max_step = 200
 
 amr.mffile_nstreams      = 4
 amr.precreateDirectories = 1
@@ -26,6 +27,7 @@ nyx.corner_coupling  = 1
 
 nyx.strang_split     = 1
 nyx.sdc_split        = 0
+
 nyx.add_ext_src      = 1
 nyx.heat_cool_type   = 3
 #nyx.simd_width       = 8
@@ -72,6 +74,7 @@ amr.n_cell           =  64  64  64
 amr.max_grid_size    = 32
 #fabarray.mfiter_tile_size = 128 8 8
 fabarray.mfiter_tile_size = 1024000 8 8
+fabarray.mfiter_tile_size = 1024000  1024000  1024000 
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
@@ -145,16 +148,17 @@ amr.regrid_on_restart  = 1
 #amr.nosub              = 1
 
 # CHECKPOINT FILES
-amr.checkpoint_files_output = 1
-amr.check_file        = strang_chk
+amr.checkpoint_files_output = 0
+amr.check_file        = chk
 amr.check_int         = 100
 amr.checkpoint_nfiles = 64
 
 # PLOTFILES
 fab.format          = NATIVE_32
 fab.format          = NATIVE
+
 amr.plot_files_output = 1
-amr.plot_file       = strang_plt
+amr.plot_file       = plt
 amr.plot_int        = 10
 amr.plot_nfiles     = 64
 particles.write_in_plotfile = 1

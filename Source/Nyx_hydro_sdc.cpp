@@ -107,6 +107,10 @@ Nyx::sdc_hydro (Real time,
        //      AND  needs to return an updated value of I_R in the old SDC_IR statedata.
        sdc_reactions(S_old_tmp, S_new, D_new, hydro_src, IR_old, dt, a_old, a_new, sdc_iter);
 
+       // We add IR_old from sdc_reactions to (rho e) and (rho E)
+       MultiFab::Saxpy(S_new,dt,IR_old,0,Eden,1,0);
+       MultiFab::Saxpy(S_new,dt,IR_old,0,Eint,1,0);
+
     } //End loop over SDC iterations
 
     // Copy IR_old (the current IR) into IR_new here so that when the pointer swap occurs

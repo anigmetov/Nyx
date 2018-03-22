@@ -36,7 +36,7 @@ subroutine integrate_state_with_source(lo, hi, &
     use amrex_fort_module, only : rt => amrex_real
     use meth_params_module, only : NVAR, URHO, UEDEN, UEINT, &
                                    NDIAG, TEMP_COMP, NE_COMP, ZHI_COMP, gamma_minus_1
-    use bl_constants_module, only: M_PI
+    use bl_constants_module, only: M_PI, ONE, HALF
     use eos_params_module
     use network
     use eos_module, only: nyx_eos_T_given_Re, nyx_eos_given_RT
@@ -65,7 +65,7 @@ subroutine integrate_state_with_source(lo, hi, &
     integer         , intent(inout) :: max_iter, min_iter
 
     integer :: i, j, k
-    real(rt) :: asq,aendsq,delta_rho,delta_e
+    real(rt) :: asq,aendsq,ahalf,ahalf_inv,delta_rho,delta_e,delta_rhoe
     real(rt) :: z, z_end, a_end, rho, H_reion_z, He_reion_z
     real(rt) :: rho_orig, T_orig, ne_orig, e_orig
     real(rt) :: rho_out, T_out, ne_out, e_out
@@ -79,6 +79,8 @@ subroutine integrate_state_with_source(lo, hi, &
  
     asq = a*a
     aendsq = a_end*a_end
+    ahalf     = HALF * (a + a_end)
+    ahalf_inv  = ONE / ahalf
 
     mean_rhob = comoving_OmB * 3.d0*(comoving_h*100.d0)**2 / (8.d0*M_PI*Gconst)
 
@@ -143,23 +145,37 @@ subroutine integrate_state_with_source(lo, hi, &
                 delta_rho = rho_out- state_n(i,j,k,URHO)
 
                 if ( abs(delta_rho/rho_out) .ge. 1e-14) then
-                   print *,'RHO:DOING IJK ', i,j,k, rho_out, state_n(i,j,k,URHO) ,abs((rho_out- state_n(i,j,k,URHO) )/state_n(i,j,k,URHO) )
+                   print *,' RHO:DOING IJK ', i,j,k, rho_out, state_n(i,j,k,URHO) ,abs((rho_out- state_n(i,j,k,URHO) )/state_n(i,j,k,URHO) )
                    stop
                 end if
 
                 delta_e   =   e_out- state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)
                 if ( abs(delta_e/e_out) .ge. 1e-14) then
-                   print *,'  E:DOING IJK ', i,j,k, e_out, state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)
+                   print *,'   E:DOING IJK ', i,j,k, e_out, state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)
                    stop
                 end if
 
-                I_R(i,j,k) = (aendsq * rho_out * e_out) - (asq * rho_orig * e_orig) - rhoe_src
+                delta_rhoe   =   rho_out * e_out- state_n(i,j,k,UEINT)
+                if ( abs(delta_rhoe/(rho_out * e_out)) .ge. 1e-14) then
+                   print *,'RHOE:DOING IJK ', i,j,k, rho_out * e_out, state_n(i,j,k,UEINT)
+                   stop
+                end if
 
-                if ( abs(I_R(i,j,k)/aendsq*state_n(i,j,k,UEINT)) .gt. 1.e-14 ) then
+!                print*,(state_n(i,j,k,UEINT)-((asq*rho_orig* e_orig + delta_time*rhoe_src))/aendsq) 
+!                print*,((state_n(i,j,k,UEINT)-rho_out*e_out)/(rho_out*e_out))
+!                print*,(rho_out*e_out - ((asq*rho_orig* e_orig + delta_time*rhoe_src))/aendsq)/(rho_out*e_out) 
+                I_R(i,j,k) = (rho_out *e_out-((asq*rho_orig* e_orig + delta_time*rhoe_src))/aendsq) / delta_time 
+
+                I_R(i,j,k) = (aendsq * rho_out *e_out-((asq*rho_orig* e_orig + delta_time*rhoe_src))) / delta_time
+
+!                I_R(i,j,k) = (aendsq * rho_out *e_out-(aendsq*state_n(i,j,k,UEINT))) / delta_time 
+
+                if ( abs(I_R(i,j,k)/(aendsq*state_n(i,j,k,UEINT)/delta_time)) .gt. 1.e-14 ) then
                    print *,'I_R:DOING IJK ', i,j,k, I_R(i,j,k)
                    print *,'HYDRO_SRC ', rhoe_src
                    print *,'aendsq*rho_out*e_out ' ,aendsq*rho_out*e_out
                    print *,'asq*rho_orig*e_orig ' ,asq*rho_orig*e_orig
+                   print *,'asq*rho_orig*e_orig + src ' ,asq*rho_orig*e_orig+rhoe_src*delta_time
                    print *,'dt ',delta_time
                    print *,'src ',rhoe_src*delta_time
                    stop
@@ -207,7 +223,7 @@ subroutine integrate_state_with_source(lo, hi, &
                 ! Update (rho e) and (rho E)
                 ! state_n(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_orig * (e_out-e_orig)
                 ! state_n(i,j,k,UEDEN) = state(i,j,k,UEDEN) + rho_orig * (e_out-e_orig)
-
+                 
                 ! Update T and ne
                 ! diag_eos(i,j,k,TEMP_COMP) = T_out
                 ! diag_eos(i,j,k,  NE_COMP) = ne_out
