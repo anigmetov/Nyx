@@ -115,11 +115,11 @@ subroutine integrate_state_vode(lo, hi, &
                 j_vode = j
                 k_vode = k
 
-                ! call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
-                !                               T_out ,ne_out ,e_out)
-                ne_out = ne_orig
-                 e_out =  e_orig
-                 T_out =  T_orig
+                call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
+                                              T_out ,ne_out ,e_out)
+!                ne_out = ne_orig
+!                 e_out =  e_orig
+!                 T_out =  T_orig
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL

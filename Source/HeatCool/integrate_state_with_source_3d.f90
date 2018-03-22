@@ -161,14 +161,7 @@ subroutine integrate_state_with_source(lo, hi, &
                    stop
                 end if
 
-!                print*,(state_n(i,j,k,UEINT)-((asq*rho_orig* e_orig + delta_time*rhoe_src))/aendsq) 
-!                print*,((state_n(i,j,k,UEINT)-rho_out*e_out)/(rho_out*e_out))
-!                print*,(rho_out*e_out - ((asq*rho_orig* e_orig + delta_time*rhoe_src))/aendsq)/(rho_out*e_out) 
-                I_R(i,j,k) = (rho_out *e_out-((asq*rho_orig* e_orig + delta_time*rhoe_src))/aendsq) / delta_time 
-
                 I_R(i,j,k) = (aendsq * rho_out *e_out-((asq*rho_orig* e_orig + delta_time*rhoe_src))) / delta_time * ahalf_inv
-
-!                I_R(i,j,k) = (aendsq * rho_out *e_out-(aendsq*state_n(i,j,k,UEINT))) / delta_time 
 
                 if ( abs(I_R(i,j,k)/(aendsq*state_n(i,j,k,UEINT)/delta_time*ahalf_inv)) .gt. 1.e-14 ) then
                    print *,'I_R:DOING IJK ', i,j,k, I_R(i,j,k)
@@ -181,8 +174,8 @@ subroutine integrate_state_with_source(lo, hi, &
                    stop
                 end if
 
-                ne_out = ne_orig
-                 T_out =  T_orig
+!                ne_out = ne_orig
+!                 T_out =  T_orig
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
