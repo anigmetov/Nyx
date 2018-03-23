@@ -149,30 +149,30 @@ subroutine integrate_state_with_source(lo, hi, &
                    stop
                 end if
 
-                delta_e   =   e_out- state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)
-                if ( abs(delta_e/e_out) .ge. 1e-14) then
-                   print *,'   E:DOING IJK ', i,j,k, e_out, state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)
-                   stop
-                end if
+!                delta_e   =   e_out- state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)
+!                if ( abs(delta_e/e_out) .ge. 1e-14) then
+!                   print *,'   E:DOING IJK ', i,j,k, e_out, state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)
+!                   stop
+!                end if
 
-                delta_rhoe   =   rho_out * e_out- state_n(i,j,k,UEINT)
-                if ( abs(delta_rhoe/(rho_out * e_out)) .ge. 1e-14) then
-                   print *,'RHOE:DOING IJK ', i,j,k, rho_out * e_out, state_n(i,j,k,UEINT)
-                   stop
-                end if
+!                delta_rhoe   =   rho_out * e_out- state_n(i,j,k,UEINT)
+!                if ( abs(delta_rhoe/(rho_out * e_out)) .ge. 1e-14) then
+!                   print *,'RHOE:DOING IJK ', i,j,k, rho_out * e_out, state_n(i,j,k,UEINT)
+!                   stop
+!                end if
 
                 I_R(i,j,k) = (aendsq * rho_out *e_out-((asq*rho_orig* e_orig + delta_time*rhoe_src))) / delta_time * ahalf_inv
 
-                if ( abs(I_R(i,j,k)/(aendsq*state_n(i,j,k,UEINT)/delta_time*ahalf_inv)) .gt. 1.e-14 ) then
-                   print *,'I_R:DOING IJK ', i,j,k, I_R(i,j,k)
-                   print *,'HYDRO_SRC ', rhoe_src
-                   print *,'aendsq*rho_out*e_out ' ,aendsq*rho_out*e_out
-                   print *,'asq*rho_orig*e_orig ' ,asq*rho_orig*e_orig
-                   print *,'asq*rho_orig*e_orig + src ' ,asq*rho_orig*e_orig+rhoe_src*delta_time
-                   print *,'dt ',delta_time
-                   print *,'src ',rhoe_src*delta_time
-                   stop
-                end if
+!                if ( abs(I_R(i,j,k)/(aendsq*state_n(i,j,k,UEINT)/delta_time*ahalf_inv)) .gt. 1.e-14 ) then
+!                   print *,'I_R:DOING IJK ', i,j,k, I_R(i,j,k)
+!                   print *,'HYDRO_SRC ', rhoe_src
+!                   print *,'aendsq*rho_out*e_out ' ,aendsq*rho_out*e_out
+!                   print *,'asq*rho_orig*e_orig ' ,asq*rho_orig*e_orig
+!                   print *,'asq*rho_orig*e_orig + src ' ,asq*rho_orig*e_orig+rhoe_src*delta_time
+!                   print *,'dt ',delta_time
+!                   print *,'src ',rhoe_src*delta_time
+!                   stop
+!                end if
 
 !                ne_out = ne_orig
 !                 T_out =  T_orig
