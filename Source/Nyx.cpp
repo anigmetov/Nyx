@@ -1854,6 +1854,12 @@ Nyx::post_init (Real stop_time)
     }
 #endif
 
+#ifdef SDC
+    // Initialize to zero so we don't have NaNs in it the first time step
+    MultiFab& IR_new = get_new_data(SDC_IR_Type);
+    IR_new.setVal(0);
+#endif
+
     write_info();
 }
 

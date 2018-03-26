@@ -36,12 +36,9 @@ Nyx::sdc_hydro (Real time,
     MultiFab&  IR_old       = get_old_data(SDC_IR_Type);
     MultiFab&  IR_new       = get_new_data(SDC_IR_Type);
 
-    // This is just a hack to get us started
-    if (time == 0.)
-    {
-       IR_old.setVal(0.);
-       IR_new.setVal(0.);
-    }
+#if 0
+    VisMF::Write(IR_old,"IR_OLD");
+#endif
 
     // It's possible for interpolation to create very small negative values for
     // species so we make sure here that all species are non-negative after this
@@ -83,7 +80,9 @@ Nyx::sdc_hydro (Real time,
        // Here we bundle all the source terms into ext_src_old
        // FillPatch the IR term into ext_src_old for both Eint and Eden
        MultiFab IR_tmp(grids, dmap, 1, NUM_GROW);
+       std::cout << "GETTING IR AT TIME " << time << std::endl;
        FillPatch(*this, IR_tmp, NUM_GROW, time, SDC_IR_Type, 0, 1);
+
        MultiFab::Add(ext_src_old,IR_tmp,0,Eden,1,0);
        MultiFab::Add(ext_src_old,IR_tmp,0,Eint,1,0);
 
@@ -109,6 +108,13 @@ Nyx::sdc_hydro (Real time,
        BL_PROFILE_VAR("sdc_reactions", sdc_reactions);
        sdc_reactions(S_old_tmp, S_new, D_new, hydro_src, IR_old, dt, a_old, a_new, sdc_iter);
        BL_PROFILE_VAR_STOP(sdc_reactions);
+
+#if 0
+       if (sdc_iter == 0) 
+          VisMF::Write(IR_old,"IR_AFTER_SDC1");
+       if (sdc_iter == 1) 
+          VisMF::Write(IR_old,"IR_AFTER_SDC2");
+#endif
 
        // We add IR_old from sdc_reactions to (rho e) and (rho E)
        IR_fac = (a_old + a_new) * 0.5 * dt;

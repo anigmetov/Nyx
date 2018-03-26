@@ -14,7 +14,6 @@ Nyx::sdc_reactions (MultiFab& S_old, MultiFab& S_new, MultiFab& D_old,
 
     const Real* dx = geom.CellSize();
 
-    //    if (sdc_iter > 0)
     compute_new_temp();
     
 #ifndef FORCING

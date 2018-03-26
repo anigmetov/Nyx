@@ -140,14 +140,9 @@ Nyx::variable_setup_for_new_comp_procs()
 std::cout << "***** fix Nyx::variable_setup_for_new_comp_procs()" << std::endl;
 /*
     BL_ASSERT(desc_lst.size() == 0);
-//    desc_lst.clear();
-//    derive_lst.clear();
 
     // Initialize the network
     network_init();
-
-
-
 
     // Get options, set phys_bc
     read_params();
@@ -276,7 +271,7 @@ Nyx::hydro_setup()
                            state_data_extrap, store_in_checkpoint);
 
 #ifdef SDC
-    // This only has one component -- the update to e (or rho_e??)
+    // This only has one component -- the update to rho_e from reactions
     store_in_checkpoint = true;
     desc_lst.addDescriptor(SDC_IR_Type, IndexType::TheCellType(),
                            StateDescriptor::Point, 1, 1, interp,
@@ -405,6 +400,12 @@ Nyx::hydro_setup()
        desc_lst.setComponent(DiagEOS_Type, 2, "Z_HI", bc,
                              BndryFunc(generic_fill));
     }
+
+#ifdef SDC
+    set_scalar_bc(bc, phys_bc);
+    desc_lst.setComponent(SDC_IR_Type, 0, "I_R", bc,
+                          BndryFunc(generic_fill));
+#endif
 
 #ifdef GRAVITY
     if (do_grav)
