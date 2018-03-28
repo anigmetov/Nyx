@@ -805,9 +805,9 @@ Nyx::num_grow()
 
 inline
 Nyx&
-Nyx::get_level(int level)
+Nyx::get_level(int my_level)
 {
-    return *(Nyx *) &parent->getLevel(level);
+    return *(Nyx *) &parent->getLevel(my_level);
 }
 
 #ifndef NO_HYDRO
@@ -821,9 +821,9 @@ Nyx::get_flux_reg()
 
 inline
 amrex::FluxRegister&
-Nyx::get_flux_reg(int level)
+Nyx::get_flux_reg(int my_level)
 {
-    return get_level(level).get_flux_reg();
+    return get_level(my_level).get_flux_reg();
 }
 #endif // NO_HYDRO
 
