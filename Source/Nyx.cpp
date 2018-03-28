@@ -779,6 +779,15 @@ Nyx::init (AmrLevel& old)
     }
 #endif
 
+#ifdef SDC
+    MultiFab& IR_new = get_new_data(SDC_IR_Type);
+    for (FillPatchIterator fpi(old, IR_new, 0, cur_time, SDC_IR_Type, 0, 1);
+         fpi.isValid(); ++fpi)
+    {
+        IR_new[fpi].copy(fpi());
+    }
+#endif
+
     // Set E in terms of e + kinetic energy
     // if (do_hydro)
     // enforce_consistent_e(S_new);
@@ -1852,12 +1861,6 @@ Nyx::post_init (Real stop_time)
     {
         set_small_values();
     }
-#endif
-
-#ifdef SDC
-    // Initialize to zero so we don't have NaNs in it the first time step
-    MultiFab& IR_new = get_new_data(SDC_IR_Type);
-    IR_new.setVal(0);
 #endif
 
     write_info();
