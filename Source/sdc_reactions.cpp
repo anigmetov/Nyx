@@ -6,7 +6,7 @@ using namespace amrex;
 using std::string;
 
 void
-Nyx::sdc_reactions (MultiFab& S_old, MultiFab& S_new, MultiFab& D_old, 
+Nyx::sdc_reactions (MultiFab& S_old, MultiFab& S_new, MultiFab& D_new, 
                     MultiFab& hydro_src, MultiFab& IR,
                     Real delta_time, Real a_old, Real a_new, int sdc_iter)
 {
