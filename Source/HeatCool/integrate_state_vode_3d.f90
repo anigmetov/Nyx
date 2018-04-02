@@ -1,7 +1,7 @@
 subroutine integrate_state_vode(lo, hi, &
                                 state   , s_l1, s_l2, s_l3, s_h1, s_h2, s_h3, &
                                 diag_eos, d_l1, d_l2, d_l3, d_h1, d_h2, d_h3, &
-                                a, half_dt, min_iter, max_iter)
+                                a, delta_time, min_iter, max_iter)
 !
 !   Calculates the sources to be added later on.
 !
@@ -21,7 +21,7 @@ subroutine integrate_state_vode(lo, hi, &
 !       The low corner of the entire domain
 !   a : double
 !       The current a
-!   half_dt : double
+!   delta_time : double
 !       time step size, in Mpc km^-1 s ~ 10^12 yr.
 !
 !   Returns
@@ -51,7 +51,7 @@ subroutine integrate_state_vode(lo, hi, &
     integer         , intent(in) :: d_l1, d_l2, d_l3, d_h1, d_h2, d_h3
     real(rt), intent(inout) ::    state(s_l1:s_h1, s_l2:s_h2,s_l3:s_h3, NVAR)
     real(rt), intent(inout) :: diag_eos(d_l1:d_h1, d_l2:d_h2,d_l3:d_h3, NDIAG)
-    real(rt), intent(in)    :: a, half_dt
+    real(rt), intent(in)    :: a, delta_time
     integer         , intent(inout) :: max_iter, min_iter
 
     integer :: i, j, k
@@ -61,7 +61,7 @@ subroutine integrate_state_vode(lo, hi, &
     real(rt) :: species(5)
 
     z = 1.d0/a - 1.d0
-    call fort_integrate_comoving_a(a, a_end, half_dt)
+    call fort_integrate_comoving_a(a, a_end, delta_time)
     z_end = 1.0d0/a_end - 1.0d0
 
     mean_rhob = comoving_OmB * 3.d0*(comoving_h*100.d0)**2 / (8.d0*M_PI*Gconst)
@@ -115,7 +115,7 @@ subroutine integrate_state_vode(lo, hi, &
                 j_vode = j
                 k_vode = k
 
-                call vode_wrapper(half_dt,rho,T_orig,ne_orig,e_orig, &
+                call vode_wrapper(delta_time,rho,T_orig,ne_orig,e_orig, &
                                               T_out ,ne_out ,e_out)
 !                ne_out = ne_orig
 !                 e_out =  e_orig
