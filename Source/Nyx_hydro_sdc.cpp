@@ -80,7 +80,6 @@ Nyx::sdc_hydro (Real time,
        // Here we bundle all the source terms into ext_src_old
        // FillPatch the IR term into ext_src_old for both Eint and Eden
        MultiFab IR_tmp(grids, dmap, 1, NUM_GROW);
-       std::cout << "GETTING IR AT TIME " << time << std::endl;
        FillPatch(*this, IR_tmp, NUM_GROW, time, SDC_IR_Type, 0, 1);
 
        MultiFab::Add(ext_src_old,IR_tmp,0,Eden,1,0);
