@@ -116,10 +116,9 @@ Nyx::sdc_hydro (Real time,
           VisMF::Write(IR_old,"IR_AFTER_SDC2");
 #endif
 
-       // We add IR_old from sdc_reactions to (rho e) and (rho E)
-       IR_fac = (a_old + a_new) * 0.5 * dt;
-       MultiFab::Saxpy(S_new,IR_fac,IR_old,0,Eden,1,0);
-       MultiFab::Saxpy(S_new,IR_fac,IR_old,0,Eint,1,0);
+       // Internal to sdc_reactions, we have added a_half * IR to asq*(rho e) and asq*(rho E)
+       // I_R satisfies the equation anewsq * (rho_out  e_out ) =
+       //                            aoldsq * (rho_orig e_orig) + dt * a_half * I_R + dt * H_{rho e}
 
     } //End loop over SDC iterations
 

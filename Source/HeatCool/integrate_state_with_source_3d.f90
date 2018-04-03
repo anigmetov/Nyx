@@ -58,7 +58,7 @@ subroutine integrate_state_with_source(lo, hi, &
     integer         , intent(in) :: ir_l1, ir_l2, ir_l3, ir_h1, ir_h2, ir_h3
     real(rt), intent(in   ) ::    state(s_l1:s_h1, s_l2:s_h2,s_l3:s_h3, NVAR)
     real(rt), intent(inout) ::  state_n(sn_l1:sn_h1, sn_l2:sn_h2,sn_l3:sn_h3, NVAR)
-    real(rt), intent(in   ) :: diag_eos(d_l1:d_h1, d_l2:d_h2,d_l3:d_h3, NDIAG)
+    real(rt), intent(inout) :: diag_eos(d_l1:d_h1, d_l2:d_h2,d_l3:d_h3, NDIAG)
     real(rt), intent(in   ) :: hydro_src(src_l1:src_h1, src_l2:src_h2,src_l3:src_h3, NVAR)
     real(rt), intent(inout) :: I_R(ir_l1:ir_h1, ir_l2:ir_h2,ir_l3:ir_h3)
     real(rt), intent(in)    :: a, delta_time
@@ -109,9 +109,9 @@ subroutine integrate_state_with_source(lo, hi, &
 
                 ! Original values
                 rho_orig  = state(i,j,k,URHO)
-                e_orig   = state(i,j,k,UEINT) / rho_orig
-                T_orig   = diag_eos(i,j,k,TEMP_COMP)
-                ne_orig  = diag_eos(i,j,k,  NE_COMP)
+                e_orig    = state(i,j,k,UEINT) / rho_orig
+                T_orig    = diag_eos(i,j,k,TEMP_COMP)
+                ne_orig   = diag_eos(i,j,k,  NE_COMP)
 
                 if (inhomogeneous_on) then
                    H_reion_z = diag_eos(i,j,k,ZHI_COMP)
@@ -132,8 +132,12 @@ subroutine integrate_state_with_source(lo, hi, &
                 rho_src  = hydro_src(i,j,k,URHO)
                 rhoe_src = hydro_src(i,j,k,UEINT)
 
-                e_src = ( (asq*state(i,j,k,UEINT) + delta_time * hydro_src(i,j,k,UEINT) ) / aendsq / &
-                        (      state(i,j,k,URHO ) + delta_time * hydro_src(i,j,k,URHO)) - e_orig) / delta_time
+                !                             
+                ! This term satisfies the equation anewsq * (rho_new e_new) = 
+                !                                  aoldsq * (rho_old e_old) + dt * H_{rho e}
+                !  where e_new = e_old + dt * e_src                           
+                e_src = ( (asq*state(i,j,k,UEINT) + delta_time * rhoe_src ) / aendsq / &
+                        (      state(i,j,k,URHO ) + delta_time * rho_src  ) - e_orig) / delta_time
 
                 i_vode = i
                 j_vode = j
@@ -141,41 +145,11 @@ subroutine integrate_state_with_source(lo, hi, &
 
                 call vode_wrapper_with_source(delta_time,rho_orig,T_orig,ne_orig,e_orig,rho_src,e_src, &
                                                          rho_out ,T_out ,ne_out ,e_out)
-
-                delta_rho = rho_out- state_n(i,j,k,URHO)
-
-                if ( abs(delta_rho/rho_out) .ge. 1e-14) then
-                   print *,' RHO:DOING IJK ', i,j,k, rho_out, state_n(i,j,k,URHO) ,abs((rho_out- state_n(i,j,k,URHO) )/state_n(i,j,k,URHO) )
-                   stop
-                end if
-
-!                delta_e   =   e_out- state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)
-!                if ( abs(delta_e/e_out) .ge. 1e-14) then
-!                   print *,'   E:DOING IJK ', i,j,k, e_out, state_n(i,j,k,UEINT)/state_n(i,j,k,URHO)
-!                   stop
-!                end if
-
-!                delta_rhoe   =   rho_out * e_out- state_n(i,j,k,UEINT)
-!                if ( abs(delta_rhoe/(rho_out * e_out)) .ge. 1e-14) then
-!                   print *,'RHOE:DOING IJK ', i,j,k, rho_out * e_out, state_n(i,j,k,UEINT)
-!                   stop
-!                end if
-
-                I_R(i,j,k) = (aendsq * rho_out *e_out-((asq*rho_orig* e_orig + delta_time*rhoe_src))) / delta_time * ahalf_inv
-
-!                if ( abs(I_R(i,j,k)/(aendsq*state_n(i,j,k,UEINT)/delta_time*ahalf_inv)) .gt. 1.e-14 ) then
-!                   print *,'I_R:DOING IJK ', i,j,k, I_R(i,j,k)
-!                   print *,'HYDRO_SRC ', rhoe_src
-!                   print *,'aendsq*rho_out*e_out ' ,aendsq*rho_out*e_out
-!                   print *,'asq*rho_orig*e_orig ' ,asq*rho_orig*e_orig
-!                   print *,'asq*rho_orig*e_orig + src ' ,asq*rho_orig*e_orig+rhoe_src*delta_time
-!                   print *,'dt ',delta_time
-!                   print *,'src ',rhoe_src*delta_time
-!                   stop
-!                end if
-
-!                ne_out = ne_orig
-!                 T_out =  T_orig
+                !                             
+                ! I_R satisfies the equation anewsq * (rho_out  e_out ) = 
+                !                            aoldsq * (rho_orig e_orig) + dt * a_half * I_R + dt * H_{rho e}
+                I_R(i,j,k) = ( aendsq * rho_out *e_out - ( (asq*rho_orig* e_orig + delta_time*rhoe_src) ) ) / &
+                              (delta_time * ahalf)
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
@@ -214,12 +188,13 @@ subroutine integrate_state_with_source(lo, hi, &
                 endif
 
                 ! Update (rho e) and (rho E)
-                ! state_n(i,j,k,UEINT) = state(i,j,k,UEINT) + rho_orig * (e_out-e_orig)
-                ! state_n(i,j,k,UEDEN) = state(i,j,k,UEDEN) + rho_orig * (e_out-e_orig)
+                ! Note that we add to state_n because those already have hydro_source in them
+                state_n(i,j,k,UEINT) = state_n(i,j,k,UEINT) + delta_time * ahalf * I_R(i,j,k) / aendsq
+                state_n(i,j,k,UEDEN) = state_n(i,j,k,UEDEN) + delta_time * ahalf * I_R(i,j,k) / aendsq
                  
                 ! Update T and ne
-                ! diag_eos(i,j,k,TEMP_COMP) = T_out
-                ! diag_eos(i,j,k,  NE_COMP) = ne_out
+                diag_eos(i,j,k,TEMP_COMP) = T_out
+                diag_eos(i,j,k,  NE_COMP) = ne_out
 
             end do ! i
         end do ! j
