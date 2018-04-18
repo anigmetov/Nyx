@@ -233,8 +233,10 @@
         iorder = 2
         difmag = 0.1d0
 
+        ! grav_source_type = 1
+        ! We now default to 3 when using SDC because then the gravity updates
+        ! do not change the internal energy (rho e)
         grav_source_type = 3
-        grav_source_type = 1
 
         comoving_type = 1
 
