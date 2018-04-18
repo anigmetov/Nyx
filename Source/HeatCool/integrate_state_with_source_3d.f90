@@ -3,6 +3,7 @@ subroutine integrate_state_with_source(lo, hi, &
                                 state_n ,sn_l1,sn_l2,sn_l3,sn_h1,sn_h2,sn_h3, &
                                 diag_eos, d_l1, d_l2, d_l3, d_h1, d_h2, d_h3, &
                                 hydro_src, src_l1, src_l2, src_l3, src_h1, src_h2, src_h3, &
+                                reset_src,srcr_l1,srcr_l2,srcr_l3,srcr_h1,srcr_h2,srcr_h3, &
                                 I_R, ir_l1, ir_l2, ir_l3, ir_h1, ir_h2, ir_h3, &
                                 a, delta_time, min_iter, max_iter) &
                                 bind(C, name="integrate_state_with_source")
@@ -21,6 +22,8 @@ subroutine integrate_state_with_source(lo, hi, &
 !       Temp and Ne
 !   hydro_src_* : doubles arrays
 !       The source terms to be added to state (iterative approx.)
+!   reset_src_* : doubles arrays
+!       The source terms based on the reset correction
 !   double array (3)
 !       The low corner of the entire domain
 !   a : double
@@ -55,11 +58,13 @@ subroutine integrate_state_with_source(lo, hi, &
     integer         , intent(in) :: sn_l1, sn_l2, sn_l3, sn_h1, sn_h2, sn_h3
     integer         , intent(in) :: d_l1, d_l2, d_l3, d_h1, d_h2, d_h3
     integer         , intent(in) :: src_l1, src_l2, src_l3, src_h1, src_h2, src_h3
+    integer         , intent(in) :: srcr_l1, srcr_l2, srcr_l3, srcr_h1, srcr_h2, srcr_h3
     integer         , intent(in) :: ir_l1, ir_l2, ir_l3, ir_h1, ir_h2, ir_h3
     real(rt), intent(in   ) ::    state(s_l1:s_h1, s_l2:s_h2,s_l3:s_h3, NVAR)
     real(rt), intent(inout) ::  state_n(sn_l1:sn_h1, sn_l2:sn_h2,sn_l3:sn_h3, NVAR)
     real(rt), intent(inout) :: diag_eos(d_l1:d_h1, d_l2:d_h2,d_l3:d_h3, NDIAG)
     real(rt), intent(in   ) :: hydro_src(src_l1:src_h1, src_l2:src_h2,src_l3:src_h3, NVAR)
+    real(rt), intent(in   ) :: reset_src(srcr_l1:srcr_h1, srcr_l2:srcr_h2,srcr_l3:srcr_h3, 1)
     real(rt), intent(inout) :: I_R(ir_l1:ir_h1, ir_l2:ir_h2,ir_l3:ir_h3)
     real(rt), intent(in)    :: a, delta_time
     integer         , intent(inout) :: max_iter, min_iter
@@ -134,9 +139,11 @@ subroutine integrate_state_with_source(lo, hi, &
 
                 !                             
                 ! This term satisfies the equation anewsq * (rho_new e_new) = 
-                !                                  aoldsq * (rho_old e_old) + dt * H_{rho e}
+                !                                  aoldsq * (rho_old e_old) + dt * H_{rho e} + anewsq * (reset_src)
                 !  where e_new = e_old + dt * e_src                           
-                e_src = ( (asq*state(i,j,k,UEINT) + delta_time * rhoe_src ) / aendsq / &
+                e_src = ( ((asq*state(i,j,k,UEINT) + delta_time * rhoe_src ) / aendsq )/ &
+                        (      state(i,j,k,URHO ) + delta_time * rho_src  ) - e_orig) / delta_time
+                e_src = ( ((asq*state(i,j,k,UEINT) + delta_time * rhoe_src ) / aendsq + reset_src(i,j,k,1))/ &
                         (      state(i,j,k,URHO ) + delta_time * rho_src  ) - e_orig) / delta_time
 
                 i_vode = i
@@ -147,9 +154,9 @@ subroutine integrate_state_with_source(lo, hi, &
                                                          rho_out ,T_out ,ne_out ,e_out)
                 !                             
                 ! I_R satisfies the equation anewsq * (rho_out  e_out ) = 
-                !                            aoldsq * (rho_orig e_orig) + dt * a_half * I_R + dt * H_{rho e}
+                !                            aoldsq * (rho_orig e_orig) + dt * a_half * I_R + dt * H_{rho e} + anewsq * reset_src
                 I_R(i,j,k) = ( aendsq * rho_out *e_out - ( (asq*rho_orig* e_orig + delta_time*rhoe_src) ) ) / &
-                              (delta_time * ahalf)
+                              (delta_time * ahalf) - aendsq * reset_src(i,j,k,1) / (delta_time * ahalf)
 
                 if (e_out .lt. 0.d0) then
                     !$OMP CRITICAL
@@ -207,11 +214,12 @@ subroutine vode_wrapper_with_source(dt, rho_in, T_in, ne_in, e_in, rho_src, e_sr
     use amrex_fort_module, only : rt => amrex_real
     use vode_aux_module, only: rho_vode, T_vode, ne_vode, &
                                i_vode, j_vode, k_vode, NR_vode, rho_src_vode, e_src_vode,&
-                               i_point, j_point, k_point, rho_init_vode
+                               rho_init_vode
 
     use eos_params_module
     use fundamental_constants_module
     use comoving_module, only: comoving_h, comoving_OmB
+
     implicit none
 
     real(rt), intent(in   ) :: dt
@@ -275,8 +283,6 @@ subroutine vode_wrapper_with_source(dt, rho_in, T_in, ne_in, e_in, rho_src, e_sr
     
     real(rt) :: rpar
     integer          :: ipar
-    integer          :: print_radius
-    CHARACTER(LEN=80) :: FMT
 
     EXTERNAL jac, f_rhs, f_rhs_split
     
@@ -320,6 +326,7 @@ subroutine vode_wrapper_with_source(dt, rho_in, T_in, ne_in, e_in, rho_src, e_sr
 
     e_out  = y(1)
     rho_out = y(2)
+!    rho_out = rho_init_vode + dt * rho_src_vode
     T_out  = T_vode
     ne_out = ne_vode
 

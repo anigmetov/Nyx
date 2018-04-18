@@ -233,6 +233,7 @@
         iorder = 2
         difmag = 0.1d0
 
+        grav_source_type = 3
         grav_source_type = 1
 
         comoving_type = 1

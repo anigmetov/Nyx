@@ -61,7 +61,9 @@ Nyx::strang_second_step (Real time, Real dt, MultiFab& S_new, MultiFab& D_new)
     const Real a = get_comoving_a(time-half_dt);
     const Real* dx = geom.CellSize();
 
-    compute_new_temp(S_new,D_new);
+    MultiFab reset_src(grids, dmap, 1, NUM_GROW);
+    reset_src.setVal(0.0);
+    compute_new_temp(S_new,D_new,reset_src);
 
 #ifndef FORCING
     {

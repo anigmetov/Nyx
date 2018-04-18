@@ -81,5 +81,6 @@ Nyx::strang_hydro (Real time,
 
     // This returns updated (rho e), (rho E), and Temperature
     strang_second_step(cur_time,dt,S_new,D_new);
+
 }
 #endif

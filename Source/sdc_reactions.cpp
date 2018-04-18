@@ -14,7 +14,11 @@ Nyx::sdc_reactions (MultiFab& S_old, MultiFab& S_new, MultiFab& D_new,
 
     const Real* dx = geom.CellSize();
 
-    compute_new_temp(S_new,D_new);
+    MultiFab reset_src(grids, dmap, 1, NUM_GROW);
+    reset_src.setVal(0.0);
+    compute_new_temp(S_new,D_new,reset_src);
+    //    MultiFab reset_src(grids, dmap, 1, NUM_GROW);
+    //    reset_src.setVal(0.0);
     
 #ifndef FORCING
     {
@@ -45,6 +49,7 @@ Nyx::sdc_reactions (MultiFab& S_old, MultiFab& S_new, MultiFab& D_new,
                  BL_TO_FORTRAN(S_new[mfi]),
                  BL_TO_FORTRAN(D_new[mfi]),
 		 BL_TO_FORTRAN(hydro_src[mfi]),
+		 BL_TO_FORTRAN(reset_src[mfi]),
 		 BL_TO_FORTRAN(IR[mfi]),
                  &a_old, &delta_time, &min_iter_grid, &max_iter_grid);
 

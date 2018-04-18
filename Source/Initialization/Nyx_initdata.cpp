@@ -227,7 +227,9 @@ Nyx::initData ()
 
             if (inhomo_reion) init_zhi();
 
-            compute_new_temp(S_new,D_new);
+	    MultiFab reset_src(grids, dmap, 1, NUM_GROW);
+	    reset_src.setVal(0.0);
+            compute_new_temp(S_new,D_new,reset_src);
             enforce_consistent_e(S_new);
         }
         else

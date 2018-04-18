@@ -506,9 +506,9 @@ public:
     static int num_grow();
 
     // Synchronize (rho e) and (rho E) so they are consistent with each other
-    void reset_internal_energy(amrex::MultiFab& State, amrex::MultiFab& DiagEOS);
+    void reset_internal_energy(amrex::MultiFab& State, amrex::MultiFab& DiagEOS, amrex::MultiFab& reset_source);
 
-    void compute_new_temp(amrex::MultiFab& S_new, amrex::MultiFab& D_new);
+    void compute_new_temp(amrex::MultiFab& S_new, amrex::MultiFab& D_new, amrex::MultiFab& reset_src);
 
     void compute_rho_temp(amrex::Real& rho_T_avg, amrex::Real& T_avg, amrex::Real& Tinv_avg, amrex::Real& T_meanrho);
     void compute_gas_fractions(amrex::Real T_cut, amrex::Real rho_cut,

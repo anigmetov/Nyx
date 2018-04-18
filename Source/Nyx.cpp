@@ -1466,7 +1466,9 @@ Nyx::post_timestep (int iteration)
        // Re-compute temperature after all the other updates.
        MultiFab& S_new = get_new_data(State_Type);
        MultiFab& D_new = get_new_data(DiagEOS_Type);
-       compute_new_temp(S_new,D_new);
+       MultiFab reset_src(grids, dmap, 1, NUM_GROW);
+       reset_src.setVal(0.0);
+       compute_new_temp(S_new,D_new,reset_src);
     }
 #endif
 }
@@ -2206,7 +2208,7 @@ Nyx::network_init ()
 
 #ifndef NO_HYDRO
 void
-Nyx::reset_internal_energy (MultiFab& S_new, MultiFab& D_new)
+Nyx::reset_internal_energy (MultiFab& S_new, MultiFab& D_new, MultiFab& reset_source)
 {
     BL_PROFILE("Nyx::reset_internal_energy()");
     // Synchronize (rho e) and (rho E) so they are consistent with each other
@@ -2230,6 +2232,7 @@ Nyx::reset_internal_energy (MultiFab& S_new, MultiFab& D_new)
         Real se = 0;
         reset_internal_e
             (BL_TO_FORTRAN(S_new[mfi]), BL_TO_FORTRAN(D_new[mfi]),
+	     BL_TO_FORTRAN(reset_source[mfi]),
              bx.loVect(), bx.hiVect(),
              &print_fortran_warnings, &a, &s, &se);
         sum_energy_added += s;
@@ -2263,13 +2266,13 @@ Nyx::reset_internal_energy (MultiFab& S_new, MultiFab& D_new)
 
 #ifndef NO_HYDRO
 void
-Nyx::compute_new_temp (MultiFab& S_new, MultiFab& D_new)
+Nyx::compute_new_temp (MultiFab& S_new, MultiFab& D_new, MultiFab& reset_src)
 {
     BL_PROFILE("Nyx::compute_new_temp()");
 
     Real cur_time   = state[State_Type].curTime();
 
-    reset_internal_energy(S_new,D_new);
+    reset_internal_energy(S_new,D_new,reset_src);
 
     Real a = get_comoving_a(cur_time);
 

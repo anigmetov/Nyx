@@ -17,9 +17,12 @@ Nyx::write_info ()
 
         Real rho_T_avg=0.0, T_avg=0.0, Tinv_avg=0.0, T_meanrho=0.0;
         Real whim_mass_frac, whim_vol_frac, hh_mass_frac, hh_vol_frac, igm_mass_frac, igm_vol_frac;
+	MultiFab reset_src(grids, dmap, 1, NUM_GROW);
+	reset_src.setVal(0.0);
+
 	if (do_hydro)
         {
-            compute_new_temp(S_new,D_new);
+    	    compute_new_temp(S_new,D_new,reset_src);
             max_t = D_new.norm0(Temp_comp);
             compute_rho_temp(rho_T_avg, T_avg, Tinv_avg, T_meanrho);
             compute_gas_fractions(1.0e5, 120.0, whim_mass_frac, whim_vol_frac,

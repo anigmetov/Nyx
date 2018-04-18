@@ -1261,7 +1261,7 @@
                            +flux2(i,j,k,n) - flux2(i,j+1,k,n) &
                            +flux3(i,j,k,n) - flux3(i,j,k+1,n) ) * a_half * volinv &
                            +a_half*(a_new - a_old) * ( TWO - THREE * gamma_minus_1) * uin(i,j,k,UEINT) &
-                           -a_half*dt*(HALF * gamma_minus_1 * uin(i,j,k,n)) * divu_cc(i,j,k)
+                           -a_half*dt*(gamma_minus_1 * uin(i,j,k,n)) * divu_cc(i,j,k)
 
                   ! (rho X_i) and (rho adv_i) and (rho aux_i)
                   else

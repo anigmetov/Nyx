@@ -83,7 +83,6 @@
                    new_ke = 0.5d0 * (uout(i,j,k,UMX)**2 + uout(i,j,k,UMY)**2 + uout(i,j,k,UMZ)**2) / &
                                      uout(i,j,k,URHO) 
                    uout(i,j,k,UEDEN) = old_rhoeint + new_ke
-
                else 
                   call bl_error("Error:: Nyx_advection_3d.f90 :: bogus grav_source_type")
                end if

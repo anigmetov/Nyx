@@ -16,6 +16,7 @@
       use reion_aux_module,    only: zhi_flash, zheii_flash, flash_h, flash_he, &
                                      inhomogeneous_on
       use  eos_params_module
+      use vode_aux_module,     only: i_point, j_point, k_point, rho_init_vode, z_vode
 
       implicit none
       integer         , intent(in   ) :: lo(3),hi(3)
@@ -63,6 +64,10 @@
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)
 
+               if ( ((ABS(i-i_point) .lt. 1  .and. ABS(j-j_point).lt.1 .and. ABS(k-k_point).lt.1 ))  ) then
+                  print*, "compute_new: rhoe, e ", state(i,j,k,UEINT), state(i,j,k,UEINT)/state(i,j,k,URHO)
+               end if
+
                rhoInv = 1.d0 / state(i,j,k,URHO)
 
                if (state(i,j,k,UEINT) > 0.d0) then
@@ -92,6 +97,9 @@
                    state(i,j,k,UEINT) = state(i,j,k,URHO) * eint
                    state(i,j,k,UEDEN) = state(i,j,k,UEINT) + ke
 
+               end if
+               if ( ((ABS(i-i_point) .lt. 1  .and. ABS(j-j_point).lt.1 .and. ABS(k-k_point).lt.1 ))  ) then
+                  print*, "compute_end: rhoe, e ", state(i,j,k,UEINT), state(i,j,k,UEINT)/state(i,j,k,URHO)
                end if
 
             enddo

@@ -115,6 +115,7 @@ extern "C"
   void reset_internal_e
     (BL_FORT_FAB_ARG(S_new),
      BL_FORT_FAB_ARG(D_new),
+     BL_FORT_FAB_ARG(reset_source),
      const int lo[], const int hi[],
      const int* print_fortran_warnings,
      amrex::Real* comoving_a, amrex::Real* sum_energy_added,
@@ -279,6 +280,7 @@ extern "C"
      BL_FORT_FAB_ARG(state_new),
      BL_FORT_FAB_ARG(diag_eos),
      BL_FORT_FAB_ARG(hydro_src),
+     BL_FORT_FAB_ARG(reset_src),
      BL_FORT_FAB_ARG(IR),
      const amrex::Real* a, const amrex::Real* delta_time, 
      const int* min_iter, const int* max_iter);

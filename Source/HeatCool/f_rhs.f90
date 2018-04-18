@@ -14,7 +14,7 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
 
       use vode_aux_module       , only: z_vode, rho_vode, T_vode, ne_vode, &
                                         JH_vode, JHe_vode, i_vode, j_vode, k_vode, fn_vode, NR_vode, &
-                                        rho_init_vode, e_src_vode, rho_src_vode, i_point, k_point, j_point
+                                        rho_init_vode, e_src_vode, rho_src_vode
 
       integer, intent(in)             :: num_eq, ipar
       real(rt), intent(inout) :: y_in(num_eq)
@@ -35,21 +35,12 @@ subroutine f_rhs_split(num_eq, time, y_in, yp_out, rpar, ipar)
       real(rt) :: rho, U, a, rho_heat
       real(rt) :: nh, nh0, nhp, nhe0, nhep, nhepp
       integer :: j
-      integer :: print_radius
-      CHARACTER(LEN=80) :: FMT
 
       fn_vode=fn_vode+1;
-      print_radius = 1
 
       e_in = y_in(1)
       rho_vode = y_in(2)
 !      rho_vode = rho_init_vode + time * rho_src_vode
-
-      if ( ((ABS(i_vode-i_point) .lt. print_radius  .and. &
-           ABS(j_vode-j_point).lt.print_radius .and. ABS(k_vode-k_point).lt.print_radius ))  ) then
-      FMT = "(A6, I4, ES15.5, ES15.5E3, ES15.5, ES15.5)"
-
-      end if
 
       if (e_in(1) .lt. 0.d0) &
          e_in(1) = tiny(e_in(1))
@@ -155,7 +146,8 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
                                      eh0, ehe0, ehep
 
       use vode_aux_module       , only: z_vode, rho_vode, T_vode, ne_vode, &
-                                        JH_vode, JHe_vode, i_vode, j_vode, k_vode, fn_vode, NR_vode, i_point, k_point, j_point
+                                        JH_vode, JHe_vode, i_vode, j_vode, k_vode, fn_vode, NR_vode
+
       integer, intent(in)             :: num_eq, ipar
       real(rt), intent(inout) :: e_in(num_eq)
       real(rt), intent(in   ) :: time
@@ -171,8 +163,6 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
       real(rt) :: rho, U, a, rho_heat
       real(rt) :: nh, nh0, nhp, nhe0, nhep, nhepp
       integer :: j
-      integer :: print_radius
-      CHARACTER(LEN=80) :: FMT
 
       fn_vode=fn_vode+1;
 
@@ -214,6 +204,7 @@ subroutine f_rhs(num_eq, time, e_in, energy, rpar, ipar)
          ! Convert to the actual term to be used in e_out = e_in + dt*energy
          energy  = energy / rho_vode * (1.0d0+z_vode)
          ne_vode = ne_vode / nh
+         return
       end if
 
       ! Temperature floor
