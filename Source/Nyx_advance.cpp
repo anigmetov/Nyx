@@ -363,6 +363,7 @@ Nyx::advance_hydro_plus_particles (Real time,
     {
         MultiFab& S_old = get_level(lev).get_old_data(State_Type);
         MultiFab& S_new = get_level(lev).get_new_data(State_Type);
+        MultiFab& D_new = get_level(lev).get_new_data(DiagEOS_Type);
 
         const auto& ba = get_level(lev).get_new_data(State_Type).boxArray();
         const auto& dm = get_level(lev).get_new_data(State_Type).DistributionMap();
@@ -390,7 +391,7 @@ Nyx::advance_hydro_plus_particles (Real time,
                  BL_TO_FORTRAN(S_new[mfi]), &a_old, &a_new, &dt);
         }
 
-        get_level(lev).compute_new_temp();
+        get_level(lev).compute_new_temp(S_new,D_new);
     }
 
     // Must average down again after doing the gravity correction;
@@ -555,7 +556,7 @@ Nyx::advance_hydro (Real time,
              BL_TO_FORTRAN(S_new[mfi]), &a_old, &a_new, &dt);
     }
 
-    compute_new_temp();
+    compute_new_temp(S_new,D_new);
 #endif /*GRAVITY*/
 
     reset_internal_energy(S_new,D_new);

@@ -275,7 +275,9 @@ Nyx::compute_average_temperature (Real& average_temperature)
     for (int lev = 0; lev <= finest_level; lev++)
     {
         Nyx& nyx_lev = get_level(lev);
-        nyx_lev.compute_new_temp();
+        MultiFab& S_new = nyx_lev.get_new_data(State_Type);
+        MultiFab& D_new = nyx_lev.get_new_data(DiagEOS_Type);
+        nyx_lev.compute_new_temp(S_new,D_new);
         average_temperature += nyx_lev.vol_weight_sum("Temp",time,true);
     }
  

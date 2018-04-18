@@ -1,0 +1,2 @@
+set xrange [5:20]
+plot 'SDC/FROM_0/runlog.sdc.from0' u 4:9, 'SDC/RESTART/runlog.restart' u 4:9, 'STRANG/FROM_0/runlog.strang.from0' u 4:9, 'STRANG/RESTART/runlog.restart' u 4:9

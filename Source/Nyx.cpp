@@ -1464,7 +1464,9 @@ Nyx::post_timestep (int iteration)
     if (do_hydro)
     {
        // Re-compute temperature after all the other updates.
-       compute_new_temp();
+       MultiFab& S_new = get_new_data(State_Type);
+       MultiFab& D_new = get_new_data(DiagEOS_Type);
+       compute_new_temp(S_new,D_new);
     }
 #endif
 }
@@ -2261,11 +2263,9 @@ Nyx::reset_internal_energy (MultiFab& S_new, MultiFab& D_new)
 
 #ifndef NO_HYDRO
 void
-Nyx::compute_new_temp ()
+Nyx::compute_new_temp (MultiFab& S_new, MultiFab& D_new)
 {
     BL_PROFILE("Nyx::compute_new_temp()");
-    MultiFab& S_new = get_new_data(State_Type);
-    MultiFab& D_new = get_new_data(DiagEOS_Type);
 
     Real cur_time   = state[State_Type].curTime();
 

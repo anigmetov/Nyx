@@ -11,6 +11,7 @@ Nyx::write_info ()
     if (ndatalogs > 0)
     {
 #ifndef NO_HYDRO
+        MultiFab& S_new = get_new_data(State_Type);
         MultiFab& D_new = get_new_data(DiagEOS_Type);
 	Real      max_t = 0;
 
@@ -18,7 +19,7 @@ Nyx::write_info ()
         Real whim_mass_frac, whim_vol_frac, hh_mass_frac, hh_vol_frac, igm_mass_frac, igm_vol_frac;
 	if (do_hydro)
         {
-            compute_new_temp();
+            compute_new_temp(S_new,D_new);
             max_t = D_new.norm0(Temp_comp);
             compute_rho_temp(rho_T_avg, T_avg, Tinv_avg, T_meanrho);
             compute_gas_fractions(1.0e5, 120.0, whim_mass_frac, whim_vol_frac,

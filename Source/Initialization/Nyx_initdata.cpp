@@ -227,7 +227,7 @@ Nyx::initData ()
 
             if (inhomo_reion) init_zhi();
 
-            compute_new_temp();
+            compute_new_temp(S_new,D_new);
             enforce_consistent_e(S_new);
         }
         else
