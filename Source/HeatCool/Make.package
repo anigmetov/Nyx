@@ -5,6 +5,10 @@ f90EXE_sources += integrate_state_vode_3d.f90
 
 ifeq ($(USE_SDC), TRUE)
 f90EXE_sources += integrate_state_with_source_3d.f90
+  ifeq ($(USE_SDC), TRUE)
+    f90EXE_sources += fcvode_extras_src.f90
+    f90EXE_sources += integrate_state_fcvode_with_source_3d.f90
+  endif
 endif
 
 ifeq ($(USE_CVODE), TRUE)

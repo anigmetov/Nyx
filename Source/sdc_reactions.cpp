@@ -31,7 +31,10 @@ Nyx::sdc_reactions (MultiFab& S_old, MultiFab& S_new, MultiFab& D_new,
     int  max_iter =      0;
 
     int  min_iter_grid, max_iter_grid;
-    
+
+    /////////////////////Consider adding ifdefs for whether CVODE is compiled in for these statements
+    if(heat_cool_type == 3)
+      {
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
@@ -56,6 +59,35 @@ Nyx::sdc_reactions (MultiFab& S_old, MultiFab& S_new, MultiFab& D_new,
         min_iter = std::min(min_iter,min_iter_grid);
         max_iter = std::max(max_iter,max_iter_grid);
     }
+      }
+    else if(heat_cool_type == 5)
+      {
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (MFIter mfi(S_old,true); mfi.isValid(); ++mfi)
+    {
+        // Note that this "bx" is only the valid region (unlike for Strang)
+      const Box& bx = mfi.tilebox();
+
+        min_iter_grid = 100000;
+        max_iter_grid =      0;
+	
+        integrate_state_fcvode_with_source
+                (bx.loVect(), bx.hiVect(), 
+                 BL_TO_FORTRAN(S_old[mfi]),
+                 BL_TO_FORTRAN(S_new[mfi]),
+                 BL_TO_FORTRAN(D_new[mfi]),
+		 BL_TO_FORTRAN(hydro_src[mfi]),
+		 BL_TO_FORTRAN(reset_src[mfi]),
+		 BL_TO_FORTRAN(IR[mfi]),
+                 &a_old, &delta_time, &min_iter_grid, &max_iter_grid);
+
+        min_iter = std::min(min_iter,min_iter_grid);
+        max_iter = std::max(max_iter,max_iter_grid);
+    }
+
+      }
 
     ParallelDescriptor::ReduceIntMax(max_iter);
     ParallelDescriptor::ReduceIntMin(min_iter);

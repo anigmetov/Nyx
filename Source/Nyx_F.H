@@ -285,6 +285,17 @@ extern "C"
      const amrex::Real* a, const amrex::Real* delta_time, 
      const int* min_iter, const int* max_iter);
 
+  void integrate_state_fcvode_with_source
+    (const int* lo, const int* hi,
+     BL_FORT_FAB_ARG(state_old),
+     BL_FORT_FAB_ARG(state_new),
+     BL_FORT_FAB_ARG(diag_eos),
+     BL_FORT_FAB_ARG(hydro_src),
+     BL_FORT_FAB_ARG(reset_src),
+     BL_FORT_FAB_ARG(IR),
+     const amrex::Real* a, const amrex::Real* delta_time, 
+     const int* min_iter, const int* max_iter);
+
   void fort_compute_temp
     (const int lo[], const int hi[],
      const BL_FORT_FAB_ARG(state),
