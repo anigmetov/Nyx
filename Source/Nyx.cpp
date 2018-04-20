@@ -417,7 +417,7 @@ Nyx::read_params ()
 #ifdef HEATCOOL
     if (heat_cool_type > 0 && add_ext_src == 0)
        amrex::Error("Nyx::must set add_ext_src to 1 if heat_cool_type > 0");
-    if (heat_cool_type != 1 && heat_cool_type != 3 && heat_cool_type != 5 && heat_cool_type != 7)
+    if (heat_cool_type != 3 && heat_cool_type != 5 && heat_cool_type != 7)
        amrex::Error("Nyx:: nonzero heat_cool_type must equal 1 or 3 or 5 or 7");
     if (heat_cool_type == 0)
        amrex::Error("Nyx::contradiction -- HEATCOOL is defined but heat_cool_type == 0");
@@ -425,9 +425,6 @@ Nyx::read_params ()
     if (ParallelDescriptor::IOProcessor()) {
       std::cout << "Integrating heating/cooling method with the following method: ";
       switch (heat_cool_type) {
-        case 1:
-          std::cout << "HC";
-          break;
         case 3:
           std::cout << "VODE";
           break;
@@ -632,7 +629,7 @@ Nyx::Nyx (Amr&            papa,
 
 #ifdef HEATCOOL
      // Initialize "this_z" in the atomic_rates_module
-    if (heat_cool_type == 1 || heat_cool_type == 3 || heat_cool_type == 5 || heat_cool_type == 7)
+    if (heat_cool_type == 3 || heat_cool_type == 5 || heat_cool_type == 7)
          fort_interp_to_this_z(&initial_z);
 #endif
 
@@ -2277,7 +2274,7 @@ Nyx::compute_new_temp (MultiFab& S_new, MultiFab& D_new, MultiFab& reset_src)
     Real a = get_comoving_a(cur_time);
 
 #ifdef HEATCOOL
-    if (heat_cool_type == 1 || heat_cool_type == 3 || heat_cool_type == 5 || heat_cool_type == 7) {
+    if (heat_cool_type == 3 || heat_cool_type == 5 || heat_cool_type == 7) {
        const Real z = 1.0/a - 1.0;
        fort_interp_to_this_z(&z);
     }
