@@ -15,8 +15,6 @@ Nyx::compute_hydro_sources(amrex::Real time, amrex::Real dt, amrex::Real a_old, 
     amrex::Print() << "Computing the hydro sources ... " << std::endl;
     const int finest_level = parent->finestLevel();
     const Real* dx = geom.CellSize();
-    FArrayBox flux[BL_SPACEDIM], u_gdnv[BL_SPACEDIM];
-    Real cflLoc = -1.e+200;
     Real courno = -1.0e+200;
 
     MultiFab fluxes[BL_SPACEDIM];
@@ -46,21 +44,18 @@ Nyx::compute_hydro_sources(amrex::Real time, amrex::Real dt, amrex::Real a_old, 
     }
 
 #ifdef _OPENMP
-#pragma omp parallel 
+#pragma omp parallel reduction(max:courno)
 #endif
+    {
+    FArrayBox flux[BL_SPACEDIM], u_gdnv[BL_SPACEDIM];
+    Real cflLoc = -1.e+200;
+
     for (MFIter mfi(S_border,true); mfi.isValid(); ++mfi)
     {
         const Box& bx        = mfi.tilebox();
 
         FArrayBox& state     = S_border[mfi];
         FArrayBox& dstate    = D_border[mfi];
-
-#ifdef SHEAR_IMPROVED
-        FArrayBox& am_tmp = AveMom_tmp[mfi];
-#endif
-
-        Real se  = 0;
-        Real ske = 0;
 
         // Allocate fabs for fluxes.
         for (int i = 0; i < BL_SPACEDIM ; i++) {
@@ -69,7 +64,6 @@ Nyx::compute_hydro_sources(amrex::Real time, amrex::Real dt, amrex::Real a_old, 
             u_gdnv[i].resize(amrex::grow(bxtmp, 1), 1);
             u_gdnv[i].setVal(1.e200);
         }
-
         fort_make_hydro_sources
             (&time, bx.loVect(), bx.hiVect(), 
              BL_TO_FORTRAN(state),
@@ -92,6 +86,10 @@ Nyx::compute_hydro_sources(amrex::Real time, amrex::Real dt, amrex::Real a_old, 
         
     } // end of MFIter loop
 
+    courno = std::max(courno, cflLoc);
+
+    } // end of parallel
+
     if (add_to_flux_register)
     {
        if (do_reflux) {
@@ -107,9 +105,6 @@ Nyx::compute_hydro_sources(amrex::Real time, amrex::Real dt, amrex::Real a_old, 
          }
        }
     }
-
-    courno = std::max(courno, cflLoc);
-    ParallelDescriptor::ReduceRealMax(courno);
 
     if (courno > 1.0)
     {

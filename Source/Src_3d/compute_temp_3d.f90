@@ -98,9 +98,6 @@
                    state(i,j,k,UEDEN) = state(i,j,k,UEINT) + ke
 
                end if
-               if ( ((ABS(i-i_point) .lt. 1  .and. ABS(j-j_point).lt.1 .and. ABS(k-k_point).lt.1 ))  ) then
-                  print*, "compute_end: rhoe, e ", state(i,j,k,UEINT), state(i,j,k,UEINT)/state(i,j,k,URHO)
-               end if
 
             enddo
          enddo

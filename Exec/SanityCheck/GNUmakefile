@@ -7,7 +7,7 @@ CVODE_LIB_DIR ?= $(CVODE_LIB)
 TOP = ../..
 
 # compilation options
-COMP    = intel
+COMP    = gnu
 USE_MPI = TRUE
 USE_OMP = TRUE
 
@@ -29,6 +29,7 @@ USE_GRAV = TRUE
 USE_HEATCOOL = TRUE
 USE_AGN = FALSE
 USE_CVODE = FALSE
+AMREX_USE_CVODE = USE_CVODE
 
 Bpack := ./Make.package
 Blocs := .
