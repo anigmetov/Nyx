@@ -20,7 +20,7 @@
            bind(C, name="fort_make_hydro_sources")
 
       use amrex_fort_module, only : rt => amrex_real
-      use mempool_module, only : bl_allocate, bl_deallocate
+      use amrex_mempool_module, only : bl_allocate, bl_deallocate
       use meth_params_module, only : QVAR, NVAR, NHYP, normalize_species
       use bl_constants_module
 
@@ -179,7 +179,7 @@
                          divu_cc,a_old,a_new,print_fortran_warnings)
 
       use amrex_fort_module, only : rt => amrex_real
-      use mempool_module, only : bl_allocate, bl_deallocate
+      use amrex_mempool_module, only : bl_allocate, bl_deallocate
       use bl_constants_module
       use meth_params_module, only : QVAR, NVAR, QU, ppm_type, &
                                      use_colglaz, corner_coupling, &
@@ -1424,7 +1424,7 @@
                         idir,ilo,ihi,jlo,jhi,kc,kflux,k3d,print_fortran_warnings)
 
       use amrex_fort_module, only : rt => amrex_real
-      use mempool_module, only : bl_allocate, bl_deallocate
+      use amrex_mempool_module, only : bl_allocate, bl_deallocate
       use bl_constants_module
       use meth_params_module, only : QVAR, NVAR
 

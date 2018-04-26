@@ -958,6 +958,20 @@ Gravity::get_old_grav_vector (int       level,
 
     // Fill grow cells in grad_phi, will need to compute grad_phi_cc in 1 grow cell
     const Geometry& geom = parent->Geom(level);
+#if 0
+    if (level == 0)
+    {
+        for (int i = 0; i < BL_SPACEDIM ; i++)
+           grad_phi_prev[level][i]->setBndry(0.);
+    }
+    else
+    {
+        Vector<std::unique_ptr<MultiFab> > crse_grad_phi(BL_SPACEDIM);
+        get_crse_grad_phi(level, crse_grad_phi, time);
+        fill_ec_grow(level, amrex::GetVecOfPtrs(grad_phi_prev[level]),
+	                    amrex::GetVecOfPtrs(crse_grad_phi));
+    }
+#endif
 
     // Fill boundary values at the current level
     for (int i = 0; i < BL_SPACEDIM ; i++)
@@ -1013,6 +1027,23 @@ Gravity::get_new_grav_vector (int       level,
         // Fill grow cells in `grad_phi`, will need to compute `grad_phi_cc` in
         // 1 grow cell
         const Geometry& geom = parent->Geom(level);
+#if 0
+        if (level == 0)
+        {
+            for (int i = 0; i < BL_SPACEDIM ; i++)
+            {
+                grad_phi_curr[level][i]->setBndry(0);
+                grad_phi_curr[level][i]->FillBoundary(geom.periodicity());
+            }
+        }
+        else
+        {
+            Vector<std::unique_ptr<MultiFab> > crse_grad_phi(BL_SPACEDIM);
+            get_crse_grad_phi(level, crse_grad_phi, time);
+            fill_ec_grow(level, amrex::GetVecOfPtrs(grad_phi_curr[level]),
+                                amrex::GetVecOfPtrs(crse_grad_phi));
+        }
+#endif
 
         for (int i = 0; i < BL_SPACEDIM ; i++)
             grad_phi_curr[level][i]->FillBoundary(geom.periodicity());
