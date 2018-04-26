@@ -45,6 +45,9 @@ Nyx::compute_hydro_sources(amrex::Real time, amrex::Real dt, amrex::Real a_old, 
        }
     }
 
+#ifdef _OPENMP
+#pragma omp parallel 
+#endif
     for (MFIter mfi(S_border,true); mfi.isValid(); ++mfi)
     {
         const Box& bx        = mfi.tilebox();

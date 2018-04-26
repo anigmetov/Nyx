@@ -12,6 +12,10 @@ Nyx::update_state_with_sources( MultiFab& S_old, MultiFab& S_new,
                                 amrex::Real dt, amrex::Real a_old, amrex::Real a_new)
 {
     amrex::Print() << "Updating state with the hydro sources ... " << std::endl;
+
+#ifdef _OPENMP
+#pragma omp parallel 
+#endif
     for (MFIter mfi(S_old,true); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
