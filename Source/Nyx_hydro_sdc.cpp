@@ -85,6 +85,8 @@ Nyx::sdc_hydro (Real time,
        MultiFab::Add(ext_src_old,IR_tmp,0,Eden,1,0);
        MultiFab::Add(ext_src_old,IR_tmp,0,Eint,1,0);
 
+       ext_src_old.FillBoundary(geom.periodicity());
+
        bool   init_flux_register = (sdc_iter == 0);
        bool add_to_flux_register = (sdc_iter == sdc_iter_max-1);
        compute_hydro_sources(time,dt,a_old,a_new,S_old_tmp,D_old_tmp,
