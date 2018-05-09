@@ -86,5 +86,7 @@ module vode_aux_module
   use amrex_fort_module, only : rt => amrex_real
   implicit none
 
-  real(rt) :: z_vode
+  integer , save :: i_point, j_point, k_point
+  real(rt), save :: z_vode
+
 end module vode_aux_module
