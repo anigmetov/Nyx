@@ -477,9 +477,6 @@
             if (k3d .ge. ilo3+1 .and. k3d .le. ihi3+1) then
                do j = ilo2,ihi2
                   do i = ilo1,ihi1
-!                    divu_cc(i,j,k3d-1) = divu_cc(i,j,k3d-1) +  &
-!                         HALF*(pgdnvzf(i,j,kc)+pgdnvzf(i,j,km)) * &
-!                               (ugdnvzf(i,j,kc)-ugdnvzf(i,j,km))/dz
                      divu_cc(i,j,k3d-1) = divu_cc(i,j,k3d-1) +  &
                                 (ugdnvzf(i,j,kc)-ugdnvzf(i,j,km))/dz
                   end do
@@ -603,11 +600,6 @@
 
                do j = ilo2,ihi2
                   do i = ilo1,ihi1
-!                    divu_cc(i,j,k3d-1) = divu_cc(i,j,k3d-1) +  &
-!                         HALF*(pgdnvxf(i+1,j,km) + pgdnvxf(i,j,km)) *  &
-!                         (ugdnvxf(i+1,j,km)-ugdnvxf(i,j,km))/dx + &
-!                         HALF*(pgdnvyf(i,j+1,km) + pgdnvyf(i,j,km)) *  &
-!                         (ugdnvyf(i,j+1,km)-ugdnvyf(i,j,km))/dy
                      divu_cc(i,j,k3d-1) = divu_cc(i,j,k3d-1) +  &
                           (ugdnvxf(i+1,j,km)-ugdnvxf(i,j,km))/dx + &
                           (ugdnvyf(i,j+1,km)-ugdnvyf(i,j,km))/dy
@@ -995,7 +987,7 @@
                       flux1,flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3, &
                       flux2,flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3, &
                       flux3,flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3, &
-                      div,divu_cc,lo,hi,dx,dy,dz,dt,a_old,a_new)
+                      divu_nd,divu_cc,lo,hi,dx,dy,dz,dt,a_old,a_new)
 
       use amrex_fort_module, only : rt => amrex_real
       use bl_constants_module
@@ -1016,7 +1008,7 @@
       real(rt)  :: flux1(flux1_l1:flux1_h1,flux1_l2:flux1_h2,flux1_l3:flux1_h3,NVAR)
       real(rt)  :: flux2(flux2_l1:flux2_h1,flux2_l2:flux2_h2,flux2_l3:flux2_h3,NVAR)
       real(rt)  :: flux3(flux3_l1:flux3_h1,flux3_l2:flux3_h2,flux3_l3:flux3_h3,NVAR)
-      real(rt)  :: div(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1)
+      real(rt)  :: divu_nd(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1)
       real(rt)  :: divu_cc(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
       real(rt)  :: dx, dy, dz, dt, a_old, a_new
 
@@ -1041,7 +1033,7 @@
             do k = lo(3),hi(3)
                do j = lo(2),hi(2)
                   do i = lo(1),hi(1)+1
-                     div1 = FOURTH*(div(i,j,k) + div(i,j+1,k) + div(i,j,k+1) + div(i,j+1,k+1))
+                     div1 = FOURTH*(divu_nd(i,j,k) + divu_nd(i,j+1,k) + divu_nd(i,j,k+1) + divu_nd(i,j+1,k+1))
                      div1 = difmag*min(ZERO,div1)
                      flux1(i,j,k,n) = flux1(i,j,k,n) + dx*div1*(uin(i,j,k,n)-uin(i-1,j,k,n))
                      flux1(i,j,k,n) = flux1(i,j,k,n) * area1 * dt
@@ -1051,7 +1043,7 @@
             do k = lo(3),hi(3)
                do j = lo(2),hi(2)+1
                   do i = lo(1),hi(1)
-                     div1 = FOURTH*(div(i,j,k) + div(i+1,j,k) + div(i,j,k+1) + div(i+1,j,k+1))
+                     div1 = FOURTH*(divu_nd(i,j,k) + divu_nd(i+1,j,k) + divu_nd(i,j,k+1) + divu_nd(i+1,j,k+1))
                      div1 = difmag*min(ZERO,div1)
                      flux2(i,j,k,n) = flux2(i,j,k,n) + dy*div1*(uin(i,j,k,n)-uin(i,j-1,k,n))
                      flux2(i,j,k,n) = flux2(i,j,k,n) * area2 * dt
@@ -1061,7 +1053,7 @@
             do k = lo(3),hi(3)+1
                do j = lo(2),hi(2)
                   do i = lo(1),hi(1)
-                     div1 = FOURTH*(div(i,j,k) + div(i+1,j,k) + div(i,j+1,k) + div(i+1,j+1,k))
+                     div1 = FOURTH*(divu_nd(i,j,k) + divu_nd(i+1,j,k) + divu_nd(i,j+1,k) + divu_nd(i+1,j+1,k))
                      div1 = difmag*min(ZERO,div1)
                      flux3(i,j,k,n) = flux3(i,j,k,n) + dz*div1*(uin(i,j,k,n)-uin(i,j,k-1,n))
                      flux3(i,j,k,n) = flux3(i,j,k,n) * area3 * dt

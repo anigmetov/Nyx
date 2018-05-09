@@ -18,6 +18,11 @@
 
 #include <iostream>
 
+#ifdef BL_HDF5
+#include <hdf5.h>
+#endif
+
+
 using std::istream;
 using std::ostream;
 
@@ -97,6 +102,9 @@ public:
     //Write a plotfile to specified directory.
     //
     virtual void writePlotFile(const std::string& dir, ostream& os, amrex::VisMF::How how);
+#ifdef BL_HDF5
+    virtual void writePlotFileHDF5(const std::string& dir, ostream& os, amrex::VisMF::How how);
+#endif
     virtual void writePlotFilePre(const std::string& dir, ostream& os);
     virtual void writePlotFilePost(const std::string& dir, ostream& os);
 
@@ -506,9 +514,10 @@ public:
     static int num_grow();
 
     // Synchronize (rho e) and (rho E) so they are consistent with each other
-    void reset_internal_energy(amrex::MultiFab& State, amrex::MultiFab& DiagEOS, amrex::MultiFab& reset_source);
+    void reset_internal_energy(amrex::MultiFab& State, amrex::MultiFab& DiagEOS, amrex::MultiFab& reset_e_src);
 
-    void compute_new_temp(amrex::MultiFab& S_new, amrex::MultiFab& D_new, amrex::MultiFab& reset_src);
+    // Note: this no longer includes the call to reset_internal_energy
+    void compute_new_temp(amrex::MultiFab& S_new, amrex::MultiFab& D_new);
 
     void compute_rho_temp(amrex::Real& rho_T_avg, amrex::Real& T_avg, amrex::Real& Tinv_avg, amrex::Real& T_meanrho);
     void compute_gas_fractions(amrex::Real T_cut, amrex::Real rho_cut,

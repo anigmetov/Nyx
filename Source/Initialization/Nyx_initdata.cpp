@@ -227,9 +227,12 @@ Nyx::initData ()
 
             if (inhomo_reion) init_zhi();
 
-	    MultiFab reset_src(grids, dmap, 1, NUM_GROW);
-	    reset_src.setVal(0.0);
-            compute_new_temp(S_new,D_new,reset_src);
+            // First reset internal energy before call to compute_temp
+	    MultiFab reset_e_src(grids, dmap, 1, NUM_GROW);
+	    reset_e_src.setVal(0.0);
+
+            reset_internal_energy(S_new,D_new,reset_e_src);
+            compute_new_temp     (S_new,D_new);
             enforce_consistent_e(S_new);
         }
         else

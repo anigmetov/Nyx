@@ -366,8 +366,8 @@ Nyx::advance_hydro_plus_particles (Real time,
         MultiFab& S_old = get_level(lev).get_old_data(State_Type);
         MultiFab& S_new = get_level(lev).get_new_data(State_Type);
         MultiFab& D_new = get_level(lev).get_new_data(DiagEOS_Type);
-        MultiFab reset_src(grids, dmap, 1, NUM_GROW);
-        reset_src.setVal(0.0);
+        MultiFab reset_e_src(S_new.boxArray(), S_new.DistributionMap(), 1, NUM_GROW);
+        reset_e_src.setVal(0.0);
 
         const auto& ba = get_level(lev).get_new_data(State_Type).boxArray();
         const auto& dm = get_level(lev).get_new_data(State_Type).DistributionMap();
@@ -382,6 +382,9 @@ Nyx::advance_hydro_plus_particles (Real time,
 
         const Real* dx = get_level(lev).Geom().CellSize();
 
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
         for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.tilebox();
@@ -395,7 +398,9 @@ Nyx::advance_hydro_plus_particles (Real time,
                  BL_TO_FORTRAN(S_new[mfi]), &a_old, &a_new, &dt);
         }
 
-        get_level(lev).compute_new_temp(S_new,D_new,reset_src);
+        // First reset internal energy before call to compute_temp
+        get_level(lev).reset_internal_energy(S_new,D_new,reset_e_src);
+        get_level(lev).compute_new_temp(S_new,D_new);
     }
 
     // Must average down again after doing the gravity correction;
@@ -444,10 +449,10 @@ Nyx::advance_hydro_plus_particles (Real time,
     {
         MultiFab& S_new = get_level(lev).get_new_data(State_Type);
         MultiFab& D_new = get_level(lev).get_new_data(DiagEOS_Type);
-	MultiFab reset_src(grids, dmap, 1, NUM_GROW);
-	reset_src.setVal(0.0);
+        MultiFab reset_e_src(S_new.boxArray(), S_new.DistributionMap(), 1, NUM_GROW);
+	reset_e_src.setVal(0.0);
 
-	get_level(lev).reset_internal_energy(S_new,D_new,reset_src);
+	get_level(lev).reset_internal_energy(S_new,D_new,reset_e_src);
 	
     }
 
@@ -523,8 +528,8 @@ Nyx::advance_hydro (Real time,
 
     MultiFab& S_new = get_new_data(State_Type);
     MultiFab& D_new = get_new_data(DiagEOS_Type);
-    MultiFab reset_src(grids, dmap, 1, NUM_GROW);
-    reset_src.setVal(0.0);
+    MultiFab reset_e_src(S_new.boxArray(), S_new.DistributionMap(), 1, NUM_GROW);
+    reset_e_src.setVal(0.0);
 
 #ifdef GRAVITY
     if (verbose && ParallelDescriptor::IOProcessor()) 
@@ -550,15 +555,13 @@ Nyx::advance_hydro (Real time,
     MultiFab grav_vec_new(grids,dmap,BL_SPACEDIM,0);
     gravity->get_new_grav_vector(level,grav_vec_new,cur_time);
 
-    const Real* dx = geom.CellSize();
-
     // Now do corrector part of source term update
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
     for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
-
-        Real se  = 0;
-        Real ske = 0;
 
         fort_correct_gsrc
             (bx.loVect(), bx.hiVect(), BL_TO_FORTRAN(grav_vec_old[mfi]),
@@ -566,10 +569,11 @@ Nyx::advance_hydro (Real time,
              BL_TO_FORTRAN(S_new[mfi]), &a_old, &a_new, &dt);
     }
 
-    compute_new_temp(S_new,D_new,reset_src);
 #endif /*GRAVITY*/
 
-    reset_internal_energy(S_new,D_new,reset_src);
+    // First reset internal energy before call to compute_temp
+    reset_internal_energy(S_new,D_new,reset_e_src);
+    compute_new_temp(S_new,D_new);
 
     return dt;
 }
