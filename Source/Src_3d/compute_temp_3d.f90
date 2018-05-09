@@ -7,6 +7,7 @@
                                    comoving_a, print_fortran_warnings) &
       bind(C, name = "fort_compute_temp")
 
+      use amrex_error_module
       use amrex_fort_module, only : rt => amrex_real
       use eos_module
       use atomic_rates_module, only: this_z
@@ -16,7 +17,6 @@
       use reion_aux_module,    only: zhi_flash, zheii_flash, flash_h, flash_he, &
                                      inhomogeneous_on
       use  eos_params_module
-      use vode_aux_module,     only: i_point, j_point, k_point, rho_init_vode, z_vode
 
       implicit none
       integer         , intent(in   ) :: lo(3),hi(3)
@@ -54,7 +54,7 @@
                   print *,'>>> Error: compute_temp ',i,j,k
                   print *,'>>> ... negative density ',state(i,j,k,URHO)
                   print *,'    '
-                  call bl_error("Error:: compute_temp_3d.f90 :: compute_temp")
+                  call amrex_error("Error:: compute_temp_3d.f90 :: compute_temp")
                end if
             enddo
          enddo
@@ -63,10 +63,6 @@
       do k = lo(3),hi(3)
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)
-
-               if ( ((ABS(i-i_point) .lt. 1  .and. ABS(j-j_point).lt.1 .and. ABS(k-k_point).lt.1 ))  ) then
-                  print*, "compute_new: rhoe, e ", state(i,j,k,UEINT), state(i,j,k,UEINT)/state(i,j,k,URHO)
-               end if
 
                rhoInv = 1.d0 / state(i,j,k,URHO)
 
@@ -111,6 +107,7 @@
                                    comoving_a, print_fortran_warnings) &
       bind(C, name = "fort_compute_temp_vec")
 
+      use amrex_error_module
       use amrex_fort_module, only : rt => amrex_real
       use eos_module
       use atomic_rates_module, only: this_z
@@ -145,7 +142,7 @@
                   print *,'>>> Error: compute_temp ',i,j,k
                   print *,'>>> ... negative density ',state(i,j,k,URHO)
                   print *,'    '
-                  call bl_error("Error:: compute_temp_3d.f90 :: compute_temp")
+                  call amrex_error("Error:: compute_temp_3d.f90 :: compute_temp")
                end if
             enddo
          enddo
