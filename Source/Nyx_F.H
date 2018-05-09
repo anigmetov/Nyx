@@ -155,8 +155,7 @@ extern "C"
             const BL_FORT_FAB_ARG(zflux)),
      const amrex::Real* cflLoc,
      const amrex::Real* a_old, const amrex::Real* a_new,
-     const int* print_fortran_warnings,
-     const int* do_grav);
+     const int* print_fortran_warnings);
 
   void fort_update_state
     ( const int lo[], const int hi[],

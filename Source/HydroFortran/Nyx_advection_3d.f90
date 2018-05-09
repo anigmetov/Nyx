@@ -35,9 +35,10 @@
                          ugdnvz_h1,ugdnvz_h2,ugdnvz_h3, &
                          divu_cc,a_old,a_new,print_fortran_warnings)
 
+      use amrex_error_module
       use amrex_fort_module, only : rt => amrex_real
-      use amrex_mempool_module, only : bl_allocate, bl_deallocate
-      use bl_constants_module
+      use amrex_mempool_module, only : amrex_allocate, amrex_deallocate
+      use amrex_constants_module
       use meth_params_module, only : QVAR, NVAR, QU, ppm_type, &
                                      use_colglaz, corner_coupling, &
                                      version_2
@@ -143,90 +144,90 @@
       fy_hi = [ihi1+1, ihi2+1, 2]
 
 
-      call bl_allocate ( pgdnvx   ,dnv_lo, dnv_hi)
-      call bl_allocate ( ugdnvx   ,dnv_lo, dnv_hi)
-      call bl_allocate ( pgdnvxf  ,dnv_lo, dnv_hi)
-      call bl_allocate ( ugdnvxf  ,dnv_lo, dnv_hi)
-      call bl_allocate ( pgdnvtmpx,dnv_lo, dnv_hi)
-      call bl_allocate ( ugdnvtmpx,dnv_lo, dnv_hi)
+      call amrex_allocate ( pgdnvx   ,dnv_lo, dnv_hi)
+      call amrex_allocate ( ugdnvx   ,dnv_lo, dnv_hi)
+      call amrex_allocate ( pgdnvxf  ,dnv_lo, dnv_hi)
+      call amrex_allocate ( ugdnvxf  ,dnv_lo, dnv_hi)
+      call amrex_allocate ( pgdnvtmpx,dnv_lo, dnv_hi)
+      call amrex_allocate ( ugdnvtmpx,dnv_lo, dnv_hi)
 
-      call bl_allocate ( pgdnvy   ,dnv_lo, dnv_hi)
-      call bl_allocate ( ugdnvy   ,dnv_lo, dnv_hi)
-      call bl_allocate ( pgdnvyf  ,dnv_lo, dnv_hi)
-      call bl_allocate ( ugdnvyf  ,dnv_lo, dnv_hi)
-      call bl_allocate ( pgdnvtmpy,dnv_lo, dnv_hi)
-      call bl_allocate ( ugdnvtmpy,dnv_lo, dnv_hi)
+      call amrex_allocate ( pgdnvy   ,dnv_lo, dnv_hi)
+      call amrex_allocate ( ugdnvy   ,dnv_lo, dnv_hi)
+      call amrex_allocate ( pgdnvyf  ,dnv_lo, dnv_hi)
+      call amrex_allocate ( ugdnvyf  ,dnv_lo, dnv_hi)
+      call amrex_allocate ( pgdnvtmpy,dnv_lo, dnv_hi)
+      call amrex_allocate ( ugdnvtmpy,dnv_lo, dnv_hi)
 
-      call bl_allocate ( pgdnvz    ,dnv_lo, dnv_hi)
-      call bl_allocate ( ugdnvz    ,dnv_lo, dnv_hi)
-      call bl_allocate ( pgdnvtmpz1,dnv_lo, dnv_hi)
-      call bl_allocate ( ugdnvtmpz1,dnv_lo, dnv_hi)
-      call bl_allocate ( pgdnvtmpz2,dnv_lo, dnv_hi)
-      call bl_allocate ( ugdnvtmpz2,dnv_lo, dnv_hi)
-      call bl_allocate ( pgdnvzf   ,dnv_lo, dnv_hi)
-      call bl_allocate ( ugdnvzf   ,dnv_lo, dnv_hi)
+      call amrex_allocate ( pgdnvz    ,dnv_lo, dnv_hi)
+      call amrex_allocate ( ugdnvz    ,dnv_lo, dnv_hi)
+      call amrex_allocate ( pgdnvtmpz1,dnv_lo, dnv_hi)
+      call amrex_allocate ( ugdnvtmpz1,dnv_lo, dnv_hi)
+      call amrex_allocate ( pgdnvtmpz2,dnv_lo, dnv_hi)
+      call amrex_allocate ( ugdnvtmpz2,dnv_lo, dnv_hi)
+      call amrex_allocate ( pgdnvzf   ,dnv_lo, dnv_hi)
+      call amrex_allocate ( ugdnvzf   ,dnv_lo, dnv_hi)
 
-      call bl_allocate ( dqx, q_lo, q_hi, QVAR)
-      call bl_allocate ( dqy, q_lo, q_hi, QVAR)
-      call bl_allocate ( dqz, q_lo, q_hi, QVAR)
+      call amrex_allocate ( dqx, q_lo, q_hi, QVAR)
+      call amrex_allocate ( dqy, q_lo, q_hi, QVAR)
+      call amrex_allocate ( dqz, q_lo, q_hi, QVAR)
 
       ! One-sided states on x-edges
-      call bl_allocate ( qxm , q_lo, q_hi, QVAR)
-      call bl_allocate ( qxp , q_lo, q_hi, QVAR)
-      call bl_allocate ( qmxy, q_lo, q_hi, QVAR)
-      call bl_allocate ( qpxy, q_lo, q_hi, QVAR)
-      call bl_allocate ( qmxz, q_lo, q_hi, QVAR)
-      call bl_allocate ( qpxz, q_lo, q_hi, QVAR)
-      call bl_allocate ( qxl , q_lo, q_hi, QVAR)
-      call bl_allocate ( qxr , q_lo, q_hi, QVAR)
+      call amrex_allocate ( qxm , q_lo, q_hi, QVAR)
+      call amrex_allocate ( qxp , q_lo, q_hi, QVAR)
+      call amrex_allocate ( qmxy, q_lo, q_hi, QVAR)
+      call amrex_allocate ( qpxy, q_lo, q_hi, QVAR)
+      call amrex_allocate ( qmxz, q_lo, q_hi, QVAR)
+      call amrex_allocate ( qpxz, q_lo, q_hi, QVAR)
+      call amrex_allocate ( qxl , q_lo, q_hi, QVAR)
+      call amrex_allocate ( qxr , q_lo, q_hi, QVAR)
 
       ! One-sided states on y-edges
-      call bl_allocate ( qym , q_lo, q_hi, QVAR)
-      call bl_allocate ( qyp , q_lo, q_hi, QVAR)
-      call bl_allocate ( qmyx, q_lo, q_hi, QVAR)
-      call bl_allocate ( qpyx, q_lo, q_hi, QVAR)
-      call bl_allocate ( qmyz, q_lo, q_hi, QVAR)
-      call bl_allocate ( qpyz, q_lo, q_hi, QVAR)
-      call bl_allocate ( qyl , q_lo, q_hi, QVAR)
-      call bl_allocate ( qyr , q_lo, q_hi, QVAR)
+      call amrex_allocate ( qym , q_lo, q_hi, QVAR)
+      call amrex_allocate ( qyp , q_lo, q_hi, QVAR)
+      call amrex_allocate ( qmyx, q_lo, q_hi, QVAR)
+      call amrex_allocate ( qpyx, q_lo, q_hi, QVAR)
+      call amrex_allocate ( qmyz, q_lo, q_hi, QVAR)
+      call amrex_allocate ( qpyz, q_lo, q_hi, QVAR)
+      call amrex_allocate ( qyl , q_lo, q_hi, QVAR)
+      call amrex_allocate ( qyr , q_lo, q_hi, QVAR)
 
       ! One-sided states on z-edges
-      call bl_allocate ( qzm , q_lo, q_hi, QVAR)
-      call bl_allocate ( qzp , q_lo, q_hi, QVAR)
-      call bl_allocate ( qmzx, q_lo, q_hi, QVAR)
-      call bl_allocate ( qpzx, q_lo, q_hi, QVAR)
-      call bl_allocate ( qmzy, q_lo, q_hi, QVAR)
-      call bl_allocate ( qpzy, q_lo, q_hi, QVAR)
-      call bl_allocate ( qzl , q_lo, q_hi, QVAR)
-      call bl_allocate ( qzr , q_lo, q_hi, QVAR)
+      call amrex_allocate ( qzm , q_lo, q_hi, QVAR)
+      call amrex_allocate ( qzp , q_lo, q_hi, QVAR)
+      call amrex_allocate ( qmzx, q_lo, q_hi, QVAR)
+      call amrex_allocate ( qpzx, q_lo, q_hi, QVAR)
+      call amrex_allocate ( qmzy, q_lo, q_hi, QVAR)
+      call amrex_allocate ( qpzy, q_lo, q_hi, QVAR)
+      call amrex_allocate ( qzl , q_lo, q_hi, QVAR)
+      call amrex_allocate ( qzr , q_lo, q_hi, QVAR)
 
       ! Output of cmpflx on x-edges
-      call bl_allocate ( fx , fx_lo, fx_hi, NVAR)
-      call bl_allocate ( fxy, fx_lo, fx_hi, NVAR)
-      call bl_allocate ( fxz, fx_lo, fx_hi, NVAR)
+      call amrex_allocate ( fx , fx_lo, fx_hi, NVAR)
+      call amrex_allocate ( fxy, fx_lo, fx_hi, NVAR)
+      call amrex_allocate ( fxz, fx_lo, fx_hi, NVAR)
 
       ! Output of cmpflx on y-edges
-      call bl_allocate ( fy , fy_lo, fy_hi, NVAR)
-      call bl_allocate ( fyx, fy_lo, fy_hi, NVAR)
-      call bl_allocate ( fyz, fy_lo, fy_hi, NVAR)
+      call amrex_allocate ( fy , fy_lo, fy_hi, NVAR)
+      call amrex_allocate ( fyx, fy_lo, fy_hi, NVAR)
+      call amrex_allocate ( fyz, fy_lo, fy_hi, NVAR)
 
       ! Output of cmpflx on z-edges
       fz_lo = [ilo1-1, ilo2-1, 1]
       fz_hi = [ihi1+1, ihi2+1, 2]
-      call bl_allocate ( fz , fz_lo, fz_hi, NVAR)
+      call amrex_allocate ( fz , fz_lo, fz_hi, NVAR)
       fz_lo = [ilo1, ilo2-1, 1]
       fz_hi = [ihi1, ihi2+1, 2]
-      call bl_allocate ( fzx, fz_lo, fz_hi, NVAR)
+      call amrex_allocate ( fzx, fz_lo, fz_hi, NVAR)
       fz_lo = [ilo1-1, ilo2, 1]
       fz_hi = [ihi1+1, ihi2, 2]
-      call bl_allocate ( fzy, fz_lo, fz_hi, NVAR)
+      call amrex_allocate ( fzy, fz_lo, fz_hi, NVAR)
 
       ! x-index, y-index, z-index, dim, characteristics, variables
-      call bl_allocate ( Ip,ilo1-1,ihi1+1,ilo2-1,ihi2+1,1,2,1,3,1,3,1,QVAR)
-      call bl_allocate ( Im,ilo1-1,ihi1+1,ilo2-1,ihi2+1,1,2,1,3,1,3,1,QVAR)
+      call amrex_allocate ( Ip,ilo1-1,ihi1+1,ilo2-1,ihi2+1,1,2,1,3,1,3,1,QVAR)
+      call amrex_allocate ( Im,ilo1-1,ihi1+1,ilo2-1,ihi2+1,1,2,1,3,1,3,1,QVAR)
 
-      call bl_allocate (Ip_g,ilo1-1,ihi1+1,ilo2-1,ihi2+1,1,2,1,3,1,3,1,3)
-      call bl_allocate (Im_g,ilo1-1,ihi1+1,ilo2-1,ihi2+1,1,2,1,3,1,3,1,3)
+      call amrex_allocate (Ip_g,ilo1-1,ihi1+1,ilo2-1,ihi2+1,1,2,1,3,1,3,1,3)
+      call amrex_allocate (Im_g,ilo1-1,ihi1+1,ilo2-1,ihi2+1,1,2,1,3,1,3,1,3)
 
       a_half = HALF * (a_old + a_new)
 
@@ -312,7 +313,7 @@
 
          else 
             print *,'>>> ... we only support ppm_type >= 0, not: ',ppm_type 
-            call bl_error("Error:: Nyx_advection_3d.f90 :: umeth3d")
+            call amrex_error("Error:: Nyx_advection_3d.f90 :: umeth3d")
          end if
 
          ! On x-edges -- choose state fx based on qxm, qxp
@@ -387,7 +388,7 @@
                end if
             else 
                print *,'>>> ... we only support ppm_type >= 0, not: ',ppm_type 
-               call bl_error("Error:: Nyx_advection_3d.f90 :: umeth3d")
+               call amrex_error("Error:: Nyx_advection_3d.f90 :: umeth3d")
             end if
 
             ! Compute \tilde{F}^z at kc (k3d)
@@ -610,77 +611,77 @@
          end if
       enddo
 
-      call bl_deallocate(pgdnvx)
-      call bl_deallocate(pgdnvxf)
-      call bl_deallocate(pgdnvtmpx)
-      call bl_deallocate(ugdnvx)
-      call bl_deallocate(ugdnvxf)
-      call bl_deallocate(ugdnvtmpx)
+      call amrex_deallocate(pgdnvx)
+      call amrex_deallocate(pgdnvxf)
+      call amrex_deallocate(pgdnvtmpx)
+      call amrex_deallocate(ugdnvx)
+      call amrex_deallocate(ugdnvxf)
+      call amrex_deallocate(ugdnvtmpx)
 
-      call bl_deallocate(pgdnvy)
-      call bl_deallocate(pgdnvyf)
-      call bl_deallocate(pgdnvtmpy)
-      call bl_deallocate(ugdnvy)
-      call bl_deallocate(ugdnvyf)
-      call bl_deallocate(ugdnvtmpy)
+      call amrex_deallocate(pgdnvy)
+      call amrex_deallocate(pgdnvyf)
+      call amrex_deallocate(pgdnvtmpy)
+      call amrex_deallocate(ugdnvy)
+      call amrex_deallocate(ugdnvyf)
+      call amrex_deallocate(ugdnvtmpy)
 
-      call bl_deallocate ( pgdnvz    )
-      call bl_deallocate ( ugdnvz    )
-      call bl_deallocate ( pgdnvtmpz1)
-      call bl_deallocate ( ugdnvtmpz1)
-      call bl_deallocate ( pgdnvtmpz2)
-      call bl_deallocate ( ugdnvtmpz2)
-      call bl_deallocate ( pgdnvzf   )
-      call bl_deallocate ( ugdnvzf   )
+      call amrex_deallocate ( pgdnvz    )
+      call amrex_deallocate ( ugdnvz    )
+      call amrex_deallocate ( pgdnvtmpz1)
+      call amrex_deallocate ( ugdnvtmpz1)
+      call amrex_deallocate ( pgdnvtmpz2)
+      call amrex_deallocate ( ugdnvtmpz2)
+      call amrex_deallocate ( pgdnvzf   )
+      call amrex_deallocate ( ugdnvzf   )
 
-      call bl_deallocate ( dqx)
-      call bl_deallocate ( dqy)
-      call bl_deallocate ( dqz)
+      call amrex_deallocate ( dqx)
+      call amrex_deallocate ( dqy)
+      call amrex_deallocate ( dqz)
 
-      call bl_deallocate ( qxm )
-      call bl_deallocate ( qxp )
-      call bl_deallocate ( qmxy)
-      call bl_deallocate ( qpxy)
-      call bl_deallocate ( qmxz)
-      call bl_deallocate ( qpxz)
-      call bl_deallocate ( qxl )
-      call bl_deallocate ( qxr )
+      call amrex_deallocate ( qxm )
+      call amrex_deallocate ( qxp )
+      call amrex_deallocate ( qmxy)
+      call amrex_deallocate ( qpxy)
+      call amrex_deallocate ( qmxz)
+      call amrex_deallocate ( qpxz)
+      call amrex_deallocate ( qxl )
+      call amrex_deallocate ( qxr )
 
-      call bl_deallocate ( qym )
-      call bl_deallocate ( qyp )
-      call bl_deallocate ( qmyx)
-      call bl_deallocate ( qpyx)
-      call bl_deallocate ( qmyz)
-      call bl_deallocate ( qpyz)
-      call bl_deallocate ( qyl )
-      call bl_deallocate ( qyr )
+      call amrex_deallocate ( qym )
+      call amrex_deallocate ( qyp )
+      call amrex_deallocate ( qmyx)
+      call amrex_deallocate ( qpyx)
+      call amrex_deallocate ( qmyz)
+      call amrex_deallocate ( qpyz)
+      call amrex_deallocate ( qyl )
+      call amrex_deallocate ( qyr )
 
-      call bl_deallocate ( qzm )
-      call bl_deallocate ( qzp )
-      call bl_deallocate ( qmzx)
-      call bl_deallocate ( qpzx)
-      call bl_deallocate ( qmzy)
-      call bl_deallocate ( qpzy)
-      call bl_deallocate ( qzl )
-      call bl_deallocate ( qzr )
+      call amrex_deallocate ( qzm )
+      call amrex_deallocate ( qzp )
+      call amrex_deallocate ( qmzx)
+      call amrex_deallocate ( qpzx)
+      call amrex_deallocate ( qmzy)
+      call amrex_deallocate ( qpzy)
+      call amrex_deallocate ( qzl )
+      call amrex_deallocate ( qzr )
 
-      call bl_deallocate ( fx )
-      call bl_deallocate ( fxy)
-      call bl_deallocate ( fxz)
+      call amrex_deallocate ( fx )
+      call amrex_deallocate ( fxy)
+      call amrex_deallocate ( fxz)
 
-      call bl_deallocate ( fy )
-      call bl_deallocate ( fyx)
-      call bl_deallocate ( fyz)
+      call amrex_deallocate ( fy )
+      call amrex_deallocate ( fyx)
+      call amrex_deallocate ( fyz)
 
-      call bl_deallocate ( fz )
-      call bl_deallocate ( fzx)
-      call bl_deallocate ( fzy)
+      call amrex_deallocate ( fz )
+      call amrex_deallocate ( fzx)
+      call amrex_deallocate ( fzy)
 
-      call bl_deallocate ( Ip)
-      call bl_deallocate ( Im)
+      call amrex_deallocate ( Ip)
+      call amrex_deallocate ( Im)
 
-      call bl_deallocate (Ip_g)
-      call bl_deallocate (Im_g)
+      call amrex_deallocate (Ip_g)
+      call amrex_deallocate (Im_g)
 
 
       end subroutine umeth3d
@@ -694,7 +695,7 @@
                          src,  src_l1, src_l2, src_l3, src_h1, src_h2, src_h3, &
                          srcQ,srcq_l1,srcq_l2,srcq_l3,srcq_h1,srcq_h2,srcq_h3, &
                          grav,gv_l1, gv_l2, gv_l3, gv_h1, gv_h2, gv_h3, &
-                         courno,dx,dy,dz,dt,ngp,ngf,a_old,a_new)
+                         dx,dy,dz,dt,ngp,ngf,a_old,a_new)
       !
       !     Will give primitive variables on lo-ngp:hi+ngp, and flatn on lo-ngf:hi+ngf
       !     if use_flattening=1.  Declared dimensions of q,c,csml,flatn are given
@@ -702,12 +703,13 @@
       !     Also, uflaten call assumes ngp>=ngf+3 (ie, primitve data is used by the
       !     routine that computes flatn).
       !
+      use amrex_error_module
       use amrex_fort_module, only : rt => amrex_real
       use network, only : nspec, naux
       use eos_params_module
       use eos_module
       use flatten_module
-      use bl_constants_module
+      use amrex_constants_module
       use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
                                      UEDEN, UEINT, UFA, UFS, &
                                      QVAR, QRHO, QU, QV, QW, &
@@ -734,14 +736,14 @@
       real(rt) ::   src( src_l1: src_h1, src_l2: src_h2, src_l3: src_h3,NVAR)
       real(rt) ::  srcQ(srcq_l1:srcq_h1,srcq_l2:srcq_h2,srcq_l3:srcq_h3,QVAR)
       real(rt) :: grav( gv_l1: gv_h1, gv_l2: gv_h2, gv_l3: gv_h3,3)
-      real(rt) :: dx, dy, dz, dt, courno, a_old, a_new
+      real(rt) :: dx, dy, dz, dt, a_old, a_new
       real(rt) :: dpdr, dpde
 
       integer          :: i, j, k
       integer          :: ngp, ngf, loq(3), hiq(3)
       integer          :: n, nq
       integer          :: iadv, ispec
-      real(rt) :: courx, coury, courz, courmx, courmy, courmz
+      real(rt) :: courx, coury, courz
       real(rt) :: a_half, a_dot, rhoInv
       real(rt) :: dtdxaold, dtdyaold, dtdzaold, small_pres_over_dens
 
@@ -764,7 +766,7 @@
                   print *,'   '
                   print *,'>>> Error: Nyx_advection_3d::ctoprim ',i,j,k
                   print *,'>>> ... negative density ',uin(i,j,k,URHO)
-                  call bl_error("Error:: Nyx_advection_3d.f90 :: ctoprim")
+                  call amrex_error("Error:: Nyx_advection_3d.f90 :: ctoprim")
                end if
 
                rhoInv = ONE/uin(i,j,k,URHO)
@@ -831,7 +833,7 @@
                      print *,'>>> Error: Nyx_advection_3d::ctoprim ',i,j,k
                      print *,'>>> ... new e from eos_given_RT call is negative ',q(i,j,k,QREINT)
                      print *,'    '
-                     call bl_error("Error:: Nyx_advection_3d.f90 :: ctoprim")
+                     call amrex_error("Error:: Nyx_advection_3d.f90 :: ctoprim")
                   end if
                end if
 
@@ -898,11 +900,6 @@
          enddo
       enddo
 
-      ! Compute running max of Courant number over grids
-      courmx = courno
-      courmy = courno
-      courmz = courno
-
       dtdxaold = dt / dx / a_old
       dtdyaold = dt / dy / a_old
       dtdzaold = dt / dz / a_old
@@ -915,10 +912,6 @@
                coury = ( c(i,j,k)+abs(q(i,j,k,QV)) ) * dtdyaold
                courz = ( c(i,j,k)+abs(q(i,j,k,QW)) ) * dtdzaold
 
-               courmx = max( courmx, courx )
-               courmy = max( courmy, coury )
-               courmz = max( courmz, courz )
-
                if (courx .gt. ONE) then
                   !
                   ! A critical region since we usually can't write from threads.
@@ -928,7 +921,7 @@
                   print *,'>>> ... at cell (i,j,k)   : ',i,j,k
                   print *,'>>> ... u, c                ',q(i,j,k,QU), c(i,j,k)
                   print *,'>>> ... density             ',q(i,j,k,QRHO)
-                  call bl_error("Error:: Nyx_advection_3d.f90 :: CFL violation in x-dir in ctoprim")
+                  call amrex_error("Error:: Nyx_advection_3d.f90 :: CFL violation in x-dir in ctoprim")
                end if
 
                if (coury .gt. ONE) then
@@ -940,7 +933,7 @@
                   print *,'>>> ... at cell (i,j,k)   : ',i,j,k
                   print *,'>>> ... v, c                ',q(i,j,k,QV), c(i,j,k)
                   print *,'>>> ... density             ',q(i,j,k,QRHO)
-                  call bl_error("Error:: Nyx_advection_3d.f90 :: CFL violation in y-dir in ctoprim")
+                  call amrex_error("Error:: Nyx_advection_3d.f90 :: CFL violation in y-dir in ctoprim")
                end if
 
                if (courz .gt. ONE) then
@@ -952,14 +945,12 @@
                   print *,'>>> ... at cell (i,j,k)   : ',i,j,k
                   print *,'>>> ... w, c                ',q(i,j,k,QW), c(i,j,k)
                   print *,'>>> ... density             ',q(i,j,k,QRHO)
-                  call bl_error("Error:: Nyx_advection_3d.f90 :: CFL violation in z-dir in ctoprim")
+                  call amrex_error("Error:: Nyx_advection_3d.f90 :: CFL violation in z-dir in ctoprim")
                end if
 
             enddo
          enddo
       enddo
-
-      courno = max( courmx, courmy, courmz )
 
       ! Compute flattening coef for slope calculations
       if (use_flattening == 1) then
@@ -990,7 +981,7 @@
                       divu_nd,divu_cc,lo,hi,dx,dy,dz,dt,a_old,a_new)
 
       use amrex_fort_module, only : rt => amrex_real
-      use bl_constants_module
+      use amrex_constants_module
       use meth_params_module, only : difmag, NVAR, URHO, UMX, UMZ, &
            UEDEN, UEINT, UFS, normalize_species, gamma_minus_1
 
@@ -1163,7 +1154,7 @@
                              bind(C, name="fort_update_state")
  
       use amrex_fort_module, only : rt => amrex_real
-      use bl_constants_module
+      use amrex_constants_module
       use meth_params_module, only : NVAR, URHO, UMX, UMZ, UEDEN, UEINT, UFS, &
                                      gamma_minus_1, normalize_species
       use enforce_module, only : enforce_nonnegative_species
@@ -1273,8 +1264,8 @@
                         idir,ilo,ihi,jlo,jhi,kc,kflux,k3d,print_fortran_warnings)
 
       use amrex_fort_module, only : rt => amrex_real
-      use amrex_mempool_module, only : bl_allocate, bl_deallocate
-      use bl_constants_module
+      use amrex_mempool_module, only : amrex_allocate, amrex_deallocate
+      use amrex_constants_module
       use meth_params_module, only : QVAR, NVAR
 
       implicit none
@@ -1302,8 +1293,8 @@
       c_lo = [ilo-1, jlo-1]
       c_hi = [ihi+1, jhi+1]
 
-      call bl_allocate ( smallc, c_lo, c_hi )
-      call bl_allocate (   cavg, c_lo, c_hi )
+      call amrex_allocate ( smallc, c_lo, c_hi )
+      call amrex_allocate (   cavg, c_lo, c_hi )
 
       if(idir.eq.1) then
          do j = jlo, jhi
@@ -1335,8 +1326,8 @@
                      ugdnv,pgdnv,pg_l1,pg_l2,pg_l3,pg_h1,pg_h2,pg_h3, &
                      idir,ilo,ihi,jlo,jhi,kc,kflux,k3d,print_fortran_warnings)
 
-      call bl_deallocate(smallc)
-      call bl_deallocate(cavg)
+      call amrex_deallocate(smallc)
+      call amrex_deallocate(cavg)
 
       end subroutine cmpflx
 
@@ -1350,9 +1341,10 @@
                            ugdnv,pgdnv,pg_l1,pg_l2,pg_l3,pg_h1,pg_h2,pg_h3, &
                            idir,ilo,ihi,jlo,jhi,kc,kflux,k3d,print_fortran_warnings)
 
+      use amrex_error_module
       use amrex_fort_module, only : rt => amrex_real
       use network, only : nspec, naux
-      use bl_constants_module
+      use amrex_constants_module
       use prob_params_module, only : physbc_lo, Symmetry
       use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QW, QPRES, QREINT, QFA, QFS, &
                                      URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, &
@@ -1622,7 +1614,7 @@
                print *,'SMALL RGDNV IN RIEMANN ',idir,i,j,k3d,rgdnv(i)
                print *,'LEFT ',ul(i),rl(i),pl(i)
                print *,'RGHT ',ur(i),rr(i),pr(i)
-               call bl_error("Error:: Nyx_advection_3d.f90 :: riemannus")
+               call amrex_error("Error:: Nyx_advection_3d.f90 :: riemannus")
             end if
          end do
 
@@ -1658,7 +1650,7 @@
                print *,'FRAC ',frac
                print *,'LEFT ',ul(i),rl(i),pl(i)
                print *,'RGHT ',ur(i),rr(i),pr(i)
-               call bl_error("Error:: Nyx_advection_3d.f90 :: riemannus")
+               call amrex_error("Error:: Nyx_advection_3d.f90 :: riemannus")
             end if
          end do
 
@@ -1742,7 +1734,7 @@
                               divu_nd,div_l1,div_l2,div_l3,div_h1,div_h2,div_h3)
 
       use amrex_fort_module, only : rt => amrex_real
-      use bl_constants_module
+      use amrex_constants_module
       use meth_params_module, only : QU, QV, QW
 
       implicit none
