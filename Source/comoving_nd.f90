@@ -177,6 +177,7 @@ module comoving_nd_module
               max_dt = (0.05d0) / abs(comoving_h)
            end if
            dt = min(dt,max_dt) 
+           dt = min(dt,1e-5)
 
         else 
 

@@ -71,7 +71,7 @@ Nyx::sdc_hydro (Real time,
     divu_cc.setVal(0.);
 
     //Begin loop over SDC iterations
-    int sdc_iter_max = 2;
+    int sdc_iter_max = 1;
 
     for (sdc_iter = 0; sdc_iter < sdc_iter_max; sdc_iter++)
     {

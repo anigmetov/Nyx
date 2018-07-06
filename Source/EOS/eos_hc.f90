@@ -562,11 +562,14 @@ module eos_module
          if (abs(dne) < xacc) exit
 
          if (i .gt. 10) then
-            !$OMP CRITICAL
-            print*, "ITERATION: ", i, " NUMBERS: ", z, t, ne, nhp, nhep, nhepp, df
-            if (i .gt. 12) &
-               STOP 'iterate_ne(): No convergence in Newton-Raphson!'
-            !$OMP END CRITICAL
+!            print*, "ITERATION: ", i, " NUMBERS: ", z, t, ne, nhp, nhep, nhepp, df
+            if (i .gt. 12) then
+               !$OMP CRITICAL
+               print*, 'iterate_ne(): No convergence in Newton-Raphson!'
+               !$OMP END CRITICAL
+               exit
+            end if
+!               STOP 'iterate_ne(): No convergence in Newton-Raphson!'
          endif
 
       enddo

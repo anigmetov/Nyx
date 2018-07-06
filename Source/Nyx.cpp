@@ -910,6 +910,9 @@ Nyx::est_time_step (Real dt_old)
     if (level==0)
         comoving_est_time_step(cur_time,est_dt);
 
+    if(est_dt>1e-7)
+      est_dt=1e-7;
+
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "Nyx::est_time_step at level "
                   << level
@@ -1450,7 +1453,7 @@ Nyx::post_timestep (int iteration)
     }
 
 #ifndef NO_HYDRO
-    if (do_hydro)
+    if (do_hydro && level < finest_level)
     {
        MultiFab& S_new = get_new_data(State_Type);
        MultiFab& D_new = get_new_data(DiagEOS_Type);
@@ -1464,6 +1467,7 @@ Nyx::post_timestep (int iteration)
        compute_new_temp(S_new,D_new);
     }
 #endif
+
 }
 
 void

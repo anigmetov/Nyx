@@ -1,5 +1,5 @@
 # AMREX_HOME defines the directory in which we will find all the AMReX code
-AMREX_HOME ?= ../../../amrex
+AMREX_HOME = ../../../amrex
 
 HPGMG_DIR ?= ../../Util/hpgmg/finite-volume
 CVODE_LIB_DIR ?= $(CVODE_LIB)
@@ -8,7 +8,7 @@ CVODE_LIB_DIR ?= $(CVODE_LIB)
 TOP = ../..
 
 # compilation options
-COMP    = intel  # gnu
+COMP    = gnu
 USE_MPI = TRUE
 USE_OMP = TRUE
 
@@ -33,7 +33,8 @@ DIM      = 3
 USE_GRAV = TRUE
 USE_HEATCOOL = TRUE
 USE_AGN = FALSE
-USE_CVODE = FALSE
+USE_CVODE = TRUE
+USE_SDC = TRUE
 
 Bpack := ./Make.package
 Blocs := .
