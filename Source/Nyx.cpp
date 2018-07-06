@@ -62,6 +62,7 @@ const int GimletSignal = 55;
 static int sum_interval = -1;
 static Real fixed_dt    = -1.0;
 static Real initial_dt  = -1.0;
+static Real max_dt      =  1e10;
 static Real dt_cutoff   =  0;
 
 int simd_width = 1;
@@ -252,6 +253,7 @@ Nyx::read_params ()
     pp_nyx.query("change_max", change_max);
     pp_nyx.query("fixed_dt", fixed_dt);
     pp_nyx.query("initial_dt", initial_dt);
+    pp_nyx.query("max_dt", max_dt);
     pp_nyx.query("sum_interval", sum_interval);
     pp_nyx.query("do_reflux", do_reflux);
     do_reflux = (do_reflux ? 1 : 0);
@@ -910,8 +912,8 @@ Nyx::est_time_step (Real dt_old)
     if (level==0)
         comoving_est_time_step(cur_time,est_dt);
 
-    if(est_dt>1e-7)
-      est_dt=1e-7;
+    if(est_dt>max_dt)
+      est_dt=max_dt;
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "Nyx::est_time_step at level "

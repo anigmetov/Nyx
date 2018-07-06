@@ -125,6 +125,7 @@ neutrinos.cfl             = 0.005     # 'cfl' for particles
 nyx.cfl                   = 0.005     # cfl number for hyperbolic system
 nyx.init_shrink           = 1.0     # scale back initial timestep
 nyx.change_max            = 2.0     # factor by which timestep can change
+nyx.max_dt                = 1e-7    # maximum timestep
 nyx.dt_cutoff             = 5.e-20  # level 0 timestep below which we halt
 
 # DIAGNOSTICS & VERBOSITY
