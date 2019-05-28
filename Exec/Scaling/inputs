@@ -7,7 +7,7 @@ nyx.use_colglaz      = 0
 nyx.corner_coupling  = 1
 
 nyx.strang_split     = 1
-nyx.add_ext_src      = 1
+nyx.add_ext_src      = 0
 nyx.heat_cool_type   = 3
 #nyx.simd_width       = 8
 
@@ -35,8 +35,6 @@ amr.data_log = runlog
 gravity.gravity_type = PoissonGrav
 gravity.no_sync      = 1
 gravity.no_composite = 1
-gravity.solve_with_cpp = 0
-gravity.solve_with_hpgmg = 1
 
 mg.bottom_solver = 4
 
@@ -71,7 +69,7 @@ nyx.do_grav  = 1
 # COSMOLOGY
 nyx.comoving_OmM = 0.275
 nyx.comoving_OmB = 0.046
-nyx.comoving_h   = 0.702d0
+nyx.comoving_h   = 0.702e0
 
 # UVB and reionization
 nyx.inhomo_reion     = 0
@@ -139,7 +137,6 @@ amr.plot_file       = plt
 amr.plot_int        = -1
 amr.plot_nfiles     = 64
 nyx.plot_z_values   = 7.0 6.0 5.0 4.0 3.0 2.0
-particles.write_in_plotfile = 1
 
 amr.plot_vars        = density xmom ymom zmom rho_e Temp phi_grav
 amr.derive_plot_vars = particle_mass_density

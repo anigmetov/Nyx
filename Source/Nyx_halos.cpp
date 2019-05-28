@@ -74,8 +74,6 @@ Nyx::halo_find (Real dt)
 {
    BL_PROFILE("Nyx::halo_find()");
 
-   const int whichSidecar(0);
-
    const Real * dx = geom.CellSize();
 
    amrex::MultiFab& new_state = get_new_data(State_Type);
@@ -108,7 +106,6 @@ Nyx::halo_find (Real dt)
      // Before creating new AGN particles, accrete mass onto existing particles 
      halo_accrete(dt);
 
-     if (ParallelDescriptor::NProcsSidecar(0) <= 0) 
      { // we have no sidecars, so do everything in situ
 
        BoxArray reeberBA;
@@ -184,8 +181,8 @@ Nyx::halo_find (Real dt)
 
        std::ofstream os;
 
-       std::cout << "  " << std::endl;
-       std::cout << " *************************************** " << std::endl;
+       //std::cout << mass_halo_min << '\t' << mass_seed << std::endl;
+       //std::cout << " *************************************** " << std::endl;
 
        // agn_density_old will hold the density from depositing the
        // mass of existing particles.
@@ -224,7 +221,7 @@ Nyx::halo_find (Real dt)
            halo_pos  = h.position;
 #else
 
-       // Now loop over the halos
+       
        for (int i = 0; i < reeber_halos_pos.size(); i++)
        {
            halo_mass = reeber_halos_mass[i];
@@ -252,8 +249,8 @@ Nyx::halo_find (Real dt)
            }
        } // end of loop over creating new particles from halos
 
-       std::cout << " *************************************** " << std::endl;
-       std::cout << "  " << std::endl;
+       //std::cout << " *************************************** " << std::endl;
+       //std::cout << "  " << std::endl;
 
        // At this point the particles have all been created on the same process as the halo they came from,
        // but they are not on the "right" process for going forward
@@ -262,14 +259,14 @@ Nyx::halo_find (Real dt)
        Nyx::theAPC()->Redistribute(lev_min, lev_max, ngrow);
 
        // Fill the "ghosts" vector with particles in ghost cells of each grid
-       Nyx::theAPC()->fillNeighbors(level);
+       Nyx::theAPC()->fillNeighbors();
 
        // ComputeOverlap sets the ID of a particle to -1 if it is less than "cutoff" away from another
        //   particle and if it is newer than that particle
        Nyx::theAPC()->ComputeOverlap(level);
 
        // Clear the Neighbor Particle data structure
-       Nyx::theAPC()->clearNeighbors(level);
+       Nyx::theAPC()->clearNeighbors();
 
        // This Redistribute is used to remove particles whose ID's have been set to -1 in ComputeOverlap
        Nyx::theAPC()->Redistribute(lev_min, lev_max, ngrow);
@@ -293,8 +290,8 @@ Nyx::halo_find (Real dt)
        // Convert new_state to conserved variables: rho, momentum, energy.
        primitive_to_conserved(new_state);
 
-       pout() << "Going into ComputeParticleVelocity (no energy), number of AGN particles on this proc is "
-              << Nyx::theAPC()->TotalNumberOfParticles(true, true) << endl;
+       //Print() << "Going into ComputeParticleVelocity (no energy), number of AGN particles on this proc is "
+       //       << Nyx::theAPC()->TotalNumberOfParticles(true, true) << endl;
 
        // Re-set the particle velocity (but not energy) after accretion,
        // using change of momentum density from orig_state to new_state,
@@ -303,8 +300,9 @@ Nyx::halo_find (Real dt)
        int add_energy = 0;
        Nyx::theAPC()->ComputeParticleVelocity(level, orig_state, new_state, add_energy);
 
-       pout() << "Going into ReleaseEnergy, number of AGN particles on this proc is "
-              << Nyx::theAPC()->TotalNumberOfParticles(true, true) << endl;
+       //Print() << "Going into ReleaseEnergy, number of AGN particles on this proc is "
+       //       << Nyx::theAPC()->TotalNumberOfParticles(true, true) << endl;
+
        // AGN particles: may zero out energy.
        // new_state: may increase internal and total energy.
        MultiFab& D_new = get_new_data(DiagEOS_Type);
@@ -312,62 +310,12 @@ Nyx::halo_find (Real dt)
        Nyx::theAPC()->ReleaseEnergy(level, new_state, D_new, a);
        // Now new_state = get_new_data(State_Type) has been updated.
 
-       //       pout() << "Step " << nStep() << " at end of Nyx_halos:" << endl;
+       //       Print() << "Step " << nStep() << " at end of Nyx_halos:" << endl;
        //       Nyx::theAPC()->writeAllAtLevel(level);
 
 #ifdef REEBER
      } 
-#if 0
-     else { // we have sidecars, so do everything in-transit
 
-       int sidecarSignal(NyxHaloFinderSignal);
-       const int MPI_IntraGroup_Broadcast_Rank = ParallelDescriptor::IOProcessor() ? MPI_ROOT : MPI_PROC_NULL;
-       ParallelDescriptor::Bcast(&sidecarSignal, 1, MPI_IntraGroup_Broadcast_Rank,
-                                 ParallelDescriptor::CommunicatorInter(whichSidecar));
-
-       Geometry geom(Geom());
-       Geometry::SendGeometryToSidecar(&geom, whichSidecar);
-
-       // FIXME: What is distribution mapping?
-       amrex::MultiFab reeberMF(grids, reeber_density_var_list.size(), 0);
-       int cnt = 0;
-       // Derive quantities and store in components 1... of MultiFAB
-       for (auto it = reeber_density_var_list.begin(); it != reeber_density_var_list.end(); ++it)
-       {
-           std::unique_ptr<MultiFab> derive_dat = particle_derive(*it, cur_time, 0);
-           reeberMF.copy(*derive_dat, comp0, cnt, ncomp1, nghost0, nghost0);
-           cnt++;
-       }
-
-       int time_step(nStep()), nComp(reeberMF.nComp());
-
-       ParallelDescriptor::Bcast(&nComp, 1, MPI_IntraGroup_Broadcast_Rank,
-                                 ParallelDescriptor::CommunicatorInter(whichSidecar));
-
-       amrex::MultiFab *mfSource = &reeberMF;
-       amrex::MultiFab *mfDest = 0;
-       int srcComp(0), destComp(1);
-       int srcNGhost(0), destNGhost(0);
-       MPI_Comm commSrc(ParallelDescriptor::CommunicatorComp());
-       MPI_Comm commDest(ParallelDescriptor::CommunicatorSidecar());
-       MPI_Comm commInter(ParallelDescriptor::CommunicatorInter(whichSidecar));
-       MPI_Comm commBoth(ParallelDescriptor::CommunicatorBoth(whichSidecar));
-       bool isSrc(true);
-
-       amrex::MultiFab::copyInter(mfSource, mfDest, srcComp, destComp, nComp,
-                           srcNGhost, destNGhost,
-                           commSrc, commDest, commInter, commBoth,
-                           isSrc);
-
-
-       ParallelDescriptor::Bcast(&time_step, 1, MPI_IntraGroup_Broadcast_Rank,
-                                 ParallelDescriptor::CommunicatorInter(whichSidecar));
-
-       int do_analysis_bcast(do_analysis);
-       ParallelDescriptor::Bcast(&do_analysis_bcast, 1, MPI_IntraGroup_Broadcast_Rank,
-                                 ParallelDescriptor::CommunicatorInter(whichSidecar));
-
-#endif // if 0
      }
 #endif // ifdef REEBER
 }
@@ -375,12 +323,17 @@ Nyx::halo_find (Real dt)
 void
 Nyx::halo_merge ()
 {
-   Nyx::theAPC()->fillNeighbors(level);
+   int npart = Nyx::theAPC()->TotalNumberOfParticles(true, true);
+   Nyx::theAPC()->fillNeighbors();
    Nyx::theAPC()->Merge(level);
-   Nyx::theAPC()->clearNeighbors(level);
+   Nyx::theAPC()->clearNeighbors();
 
    // Call Redistribute to remove any particles with id = -1 (as set inside the Merge call)
    Nyx::theAPC()->Redistribute(level, level, nghost0);
+
+   int nmerge = npart -Nyx::theAPC()->TotalNumberOfParticles(true, true);
+   Print() << nStep() << '\t' << nmerge << endl;
+
 }
 
 void
@@ -403,8 +356,9 @@ Nyx::halo_accrete (Real dt)
    MultiFab agn_density_lost(simBA, simDM, ncomp1, nghost1);
    agn_density_lost.setVal(0.0);
 
-   pout() << "Going into AccreteMass, number of AGN particles on this proc is "
-          << Nyx::theAPC()->TotalNumberOfParticles(true, true) << endl;
+   //Print() << "Going into AccreteMass, number of AGN particles on this proc is "
+   //       << Nyx::theAPC()->TotalNumberOfParticles(true, true) << endl;
+
    // AGN particles: increase mass and energy.
    // new_state: no change, other than filling in ghost cells.
    // agn_density_lost: gets filled in.
@@ -424,8 +378,8 @@ Nyx::halo_accrete (Real dt)
    // using change of momentum density in state.
    // No change to state, other than filling ghost cells.
    int add_energy = 1;
-   pout() << "Going into ComputeParticleVelocity (and energy), number of AGN particles on this proc is "
-          << Nyx::theAPC()->TotalNumberOfParticles(true, true) << endl;
+   //Print() << "Going into ComputeParticleVelocity (and energy), number of AGN particles on this proc is "
+   //       << Nyx::theAPC()->TotalNumberOfParticles(true, true) << endl;
    Nyx::theAPC()->ComputeParticleVelocity(level, orig_state, new_state, add_energy);
    // Now new_state = get_new_data(State_Type) has been updated.
 }

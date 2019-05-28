@@ -907,16 +907,16 @@ Nyx::particle_est_time_step (Real& est_dt)
 #endif
 
 void
-Nyx::particle_redistribute (int lbase, bool init)
+Nyx::particle_redistribute (int lbase, bool my_init)
 {
     BL_PROFILE("Nyx::particle_redistribute()");
     if (DMPC)
     {
         //  
-        // If we are calling with init = true, then we want to force the redistribute
+        // If we are calling with my_init = true, then we want to force the redistribute
         //    without checking whether the grids have changed.
         //  
-        if (init)
+        if (my_init)
         {
             DMPC->Redistribute(lbase);
             return;
@@ -993,7 +993,7 @@ Nyx::particle_redistribute (int lbase, bool init)
                    amrex::Print() << "Calling redistribute because DistMap changed " << '\n';
             }
 
-            DMPC->Redistribute(lbase);
+            DMPC->Redistribute(lbase, -1, parent->levelCount(lbase));
             //
             // Use the new BoxArray and DistMap to define ba and dm for next time.
             //
@@ -1092,15 +1092,6 @@ Nyx::remove_ghost_particles()
         if (GhostParticles[i] != 0)
             GhostParticles[i]->RemoveParticlesAtLevel(level);
     }
-}
-
-
-
-void
-Nyx::NyxParticlesAddProcsToComp(Amr *aptr, int nSidecarProcs, int prevSidecarProcs,
-                    int ioProcNumSCS, int ioProcNumAll, int scsMyId,
-		                        MPI_Comm scsCommn)
-{
 }
 
 //NyxParticleContainerBase::~NyxParticleContainerBase() {}

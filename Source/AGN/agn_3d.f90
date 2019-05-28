@@ -21,6 +21,9 @@
           r2 = sum((particles(i)%pos - particles(j)%pos)**2)
 
           if (r2 <= cutoff*cutoff) then
+	     print *, "found overlap particles", particles(i)%id, particles(j)%id
+	     ! If one of the particles is already invalidated, don't do anything
+	     if (particles(i)%id .eq. -1 .or. particles(j)%id .eq. -1) cycle
              ! We only remove the newer (aka of lower mass) particle
              if (particles(i)%mass .lt. particles(j)%mass)  then
                 particles(i)%id = -1
@@ -38,7 +41,7 @@
           r2 = sum((particles(i)%pos - ghosts(j)%pos)**2)
 
           if (r2 <= cutoff*cutoff) then
-
+             print *, "found overlap ghost particles", particles(i)%id, ghosts(j)%id
              ! We only remove a particle if it is both 1) valid 2) newer (aka of lower mass)
              if (particles(i)%mass .lt. ghosts(j)%mass) then
                 particles(i)%id = -1
@@ -63,18 +66,23 @@
     use amrex_fort_module, only : amrex_real
     use fundamental_constants_module, only: Gconst
     use particle_mod      , only: agn_particle_t
+    use agn_params_module , only : l_merge, cutoff_vel
 
     integer             , intent(in   ) :: np, ng
     type(agn_particle_t), intent(inout) :: particles(np)
     type(agn_particle_t), intent(in   ) :: ghosts(ng)
     real(amrex_real)    , intent(in   ) :: delta_x(3)
 
-    real(amrex_real) r2, vrelsq, r
-    real(amrex_real) cutoff, larger_mass
-    integer i, j
+    real(amrex_real) :: r2, vrelsq, r, mergetime
+    real(amrex_real) :: cutoff, larger_mass
+    integer :: i, j, merger_count
+    !logical, save :: cutoff_vel=.false.
 
-    cutoff = delta_x(1)
-    
+    cutoff = l_merge * delta_x(1)
+    print *, "cutoff", cutoff
+    mergetime = 10. *3.154e13 /3.086e19 * cutoff/1e-3   
+    merger_count = 0
+
     do i = 1, np
        do j = i+1, np
 
@@ -83,56 +91,87 @@
 
           if (r2 <= cutoff*cutoff) then
 
-             ! Relative velocity
-             vrelsq = sum((particles(i)%vel - particles(j)%vel)**2)
+	     if (cutoff_vel .eqv. .true.) then
 
-             larger_mass = max(particles(i)%mass, particles(j)%mass)
+                 ! Relative velocity
+                 vrelsq = sum((particles(i)%vel - particles(j)%vel)**2)
+                 !larger_mass = max(particles(i)%mass, particles(j)%mass)
+                 r = sqrt(r2)
+                 !if ( (vrelsq * r) < Gconst * larger_mass) then
+	         if ( sqrt(vrelsq) * mergetime < r) then
 
-             r = sqrt(r2)
-             if ( (vrelsq * r) < Gconst * larger_mass) then
-
-                ! Merge lighter particle into heavier one.
-                ! Set particle ID of lighter particle to -1
+		   ! If one of the particles is already invalidated, don't do anything
+                    if (particles(i)%id .eq. -1 .or. particles(j)%id .eq. -1) cycle
+                    ! Merge lighter particle into heavier one.
+                    ! Set particle ID of lighter particle to -1
+                    if (particles(i)%mass >= particles(j)%mass) then
+                        call agn_merge_pair(particles(i), particles(j))
+                        particles(j)%id = -1
+		        merger_count = merger_count +1
+                    else
+                       call agn_merge_pair(particles(j), particles(i))
+                       particles(i)%id = -1
+		       merger_count = merger_count +1 
+                    end if
+                 end if
+	     else ! just merge
+		print *, "found merging particles", particles(i)%id, particles(j)%id
+		if (particles(i)%id .eq. -1 .or. particles(j)%id .eq. -1) cycle
                 if (particles(i)%mass >= particles(j)%mass) then
-                   call agn_merge_pair(particles(i), particles(j))
-                   particles(j)%id = -1
+                    call agn_merge_pair(particles(i), particles(j))
+                    particles(j)%id = -1
+                    merger_count = merger_count +1
                 else
-                   call agn_merge_pair(particles(j), particles(i))
-                   particles(i)%id = -1
+                    call agn_merge_pair(particles(j), particles(i))
+                    particles(i)%id = -1
+                    merger_count = merger_count +1
                 end if
 
-             end if
-          end if
+            end if
+
+	  end if
 
        end do
     end do
 
+    print *, "number of mergers at this timestep", merger_count
+
+    !this is merging ghost particles
     do i = 1, np
        do j = 1, ng
 
           r2 = sum((particles(i)%pos - ghosts(j)%pos)**2)
 
           if (r2 <= cutoff*cutoff) then
-             ! Relative velocity
-             vrelsq = sum((particles(i)%vel - ghosts(j)%vel)**2)
+             if (cutoff_vel .eqv. .true.) then
+             	vrelsq = sum((particles(i)%vel - ghosts(j)%vel)**2)
+             	!larger_mass = max(particles(i)%mass, ghosts(j)%mass)
 
-             larger_mass = max(particles(i)%mass, ghosts(j)%mass)
+             	!if ( (vrelsq * sqrt(r2)) < Gconst * larger_mass) then
+	        if ( sqrt(vrelsq) * mergetime <  sqrt(r2) ) then
+		    !print *, "found merging ghost particles", particles(i)%id, ghosts(j)%id
+                    if (particles(i)%mass > ghosts(j)%mass) then
+                       ! The bigger particle "i" is in the valid region,
+                       ! so we put all the mass onto it.
+                       call agn_merge_pair(particles(i), ghosts(j))
+                    else
+                      ! The bigger particle "j" is in the ghost region --
+                      ! we will let its grid update that particle,
+                      ! so here we just invalidate particle "i".
+                      particles(i)%id = -1
+                   end if
+               end if
 
-             if ( (vrelsq * r2) < (Gconst * larger_mass)**2) then
+	   else
 
-                if (particles(i)%mass > ghosts(j)%mass) then
-                   ! The bigger particle "i" is in the valid region,
-                   ! so we put all the mass onto it.
-                   call agn_merge_pair(particles(i), ghosts(j))
+	   	if (particles(i)%mass > ghosts(j)%mass) then
+                    call agn_merge_pair(particles(i), ghosts(j))
                 else
-                   ! The bigger particle "j" is in the ghost region --
-                   ! we will let its grid update that particle,
-                   ! so here we just invalidate particle "i".
-                   particles(i)%id = -1
+                    particles(i)%id = -1
                 end if
+	   end if
 
-             end if
-          end if
+        end if
 
       end do
     end do
@@ -213,6 +252,7 @@
        momz = sum((state_new(i-1:i+1, j-1:j+1, k-1:k+1, UMZ) - &
                    state_old(i-1:i+1, j-1:j+1, k-1:k+1, UMZ)) * weight) * vol
 
+       !print *, "momentums", n, momx, momy, momz
        mass = particles(n)%mass
 
        ! Update velocity of particle so as to reduce momentum in the amount
@@ -408,7 +448,7 @@
     use eos_module
     use meth_params_module, only : NVAR, URHO, UEDEN, UEINT, NDIAG, NE_COMP
     use particle_mod      , only: agn_particle_t
-    use eos_module, only : nyx_eos_given_RT
+    !use eos_module, only : nyx_eos_given_RT
     use agn_params_module, only : T_min
 
     integer,              intent(in   )        :: np, slo(3), shi(3)
@@ -443,7 +483,7 @@
 
        call nyx_eos_given_RT(e, pressure, avg_rho, T_min, avg_Ne, a)
 
-!       print *, 'AGN particle at ', particles(n)%pos, ':', i, j, k
+       print *, 'AGN particle at ', particles(n)%pos, ':', i, j, k
        print 50, particles(n)%pos, i, j, k, particles(n)%mass, &
             particles(n)%energy
 50     format (1x, 'AGN particle at ', 3F8.3, 3I4, ' m=', E12.5, ' e=', E12.5)
@@ -478,11 +518,11 @@
 
   subroutine get_length_frac(frac, x, dx)
 
-    use amrex_fort_module, only : amrex_real
-    use bl_constants_module, only : ZERO, ONE, HALF
+    use amrex_fort_module, only : amrex_real, amrex_particle_real
+    use amrex_constants_module, only : ZERO, ONE, HALF
 
     real(amrex_real), intent(out  )  :: frac(-1:1)
-    real(amrex_real), intent(in   )  :: x
+    real(amrex_particle_real), intent(in   )  :: x
     real(amrex_real), intent(in   )  :: dx
 
     integer :: i
@@ -508,11 +548,11 @@
 
   subroutine get_weights(weight, pos, dx)
 
-    use amrex_fort_module, only : amrex_real
-    use bl_constants_module, only : ZERO, ONE, HALF
+    use amrex_fort_module, only : amrex_real, amrex_particle_real 
+    use amrex_constants_module, only : ZERO, ONE, HALF
 
     real(amrex_real), intent(out  )  :: weight(-1:1, -1:1, -1:1)
-    real(amrex_real), intent(in   )  :: pos(3)
+    real(amrex_particle_real), intent(in   )  :: pos(3)
     real(amrex_real), intent(in   )  :: dx(3)
 
     integer :: d, i, j, k
@@ -538,15 +578,17 @@
 
   subroutine get_random_direction(vec)
 
-    use amrex_fort_module, only : amrex_real
+    use amrex_fort_module, only : amrex_real, amrex_random
     use fundamental_constants_module, only : pi
-    use uniform01_module, only : get_uniform01
+!   use uniform01_module, only : get_uniform01
 
     real(amrex_real), intent(out)  :: vec(3)
     real(amrex_real) :: u, v, theta, horiz
 
-    u = get_uniform01()
-    v = get_uniform01()
+!   u = get_uniform01()
+!   v = get_uniform01()
+    u = amrex_random()
+    v = amrex_random()
 
     theta = 2. * pi * u
     horiz = 2. * sqrt(v * (1. - v))

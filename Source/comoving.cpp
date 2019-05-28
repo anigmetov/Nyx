@@ -8,6 +8,10 @@ Real Nyx::initial_z             = -1.0;
 Real Nyx::final_a               = -1.0;
 Real Nyx::final_z               = -1.0;
 Real Nyx::relative_max_change_a =  0.01;
+Real Nyx::absolute_max_change_a = -1.0;
+Real Nyx::dt_binpow             = -1.0;
+Real Nyx::initial_time          = -1.0;
+Real Nyx::final_time            = -1.0;
 
 void
 Nyx::read_comoving_params ()
@@ -32,6 +36,9 @@ Nyx::read_comoving_params ()
     }
 
     pp.query("relative_max_change_a", relative_max_change_a);
+    pp.query("absolute_max_change_a", absolute_max_change_a);
+    pp.query("dt_binpow",             dt_binpow);
+
 
     // for shrinking box tests, initial_z < 0 is ok
     if (initial_z < 0)
@@ -39,12 +46,34 @@ Nyx::read_comoving_params ()
         std::cerr << "ERROR::Need to specify non-negative initial redshift \n";
         amrex::Error();
     }
+
+    Real comoving_h;
+    fort_get_hubble(&comoving_h);
+
+    if (comoving_h > 0)
+    {
+       // save start/end times, for reporting purposes
+       Real a0 = 0.0, a1 = 1.0/(1.0+initial_z);
+       fort_integrate_time_given_a(&a0, &a1, &initial_time);
+
+       if (final_z >= 0) {
+          a1 = 1.0/(1.0+final_z);
+       } else {
+          a1 = final_a;
+       }
+       fort_integrate_time_given_a(&a0, &a1, &final_time);
+    } else {
+       // These are just defaults so the values are defined
+       initial_time = 0.0;
+         final_time = 0.0;
+    }
 }
 
 void
 Nyx::comoving_est_time_step (Real& cur_time, Real& estdt)
 {
     Real change_allowed = relative_max_change_a;
+    Real fixed_da = absolute_max_change_a;
     Real dt             = estdt;
     Real new_dummy_a;
     int  dt_modified;
@@ -56,7 +85,45 @@ Nyx::comoving_est_time_step (Real& cur_time, Real& estdt)
         // "old_a" and "new_a" -- we can't do that until after we compute dt and then
         // integrate a forward.
         fort_estdt_comoving_a
-            (&new_a, &new_dummy_a, &dt, &change_allowed, &final_a, &dt_modified);
+	  (&new_a, &new_dummy_a, &dt, &change_allowed, &fixed_da, &final_a, &dt_modified);
+
+    if(dt_binpow >= 0)
+      {
+	if(estdt>=dt)
+	  estdt=dt;
+	else if(estdt>.5*dt)
+	  {
+	    estdt=.5*dt;
+	    //	    std::cout << "Lavel = 1" <<std::endl;
+	  }
+	else if(estdt>.25*dt)
+	  {
+	    estdt=.25*dt;
+	    //	    std::cout << "Lavel = 2" <<std::endl;
+	  }
+	else if(estdt>.125*dt)
+	  {
+	    estdt=.125*dt;
+	    //	    std::cout << "Lavel = 3" <<std::endl;
+	  }
+	else if(estdt>.0625*dt)
+	  {
+	    estdt=.0625*dt;
+	    //	    std::cout << "Lavel = 4" <<std::endl;
+	  }
+	else
+	  {
+	    //dta*(2**(-1*np.ceil( np.log2(dta/dth))))
+	    estdt = dt*(pow(2,(-std::ceil( std::log2(dt/estdt)))));
+	    //	    std::cout << "Lavel > 4" <<std::endl;
+	  }
+	fort_integrate_comoving_a(&new_a,&new_dummy_a,&estdt);
+      }
+    else
+      {
+	estdt=std::min(estdt,dt);
+      }
+          
 
         if (verbose && (dt_modified == 1) && ParallelDescriptor::IOProcessor())
         {
@@ -76,7 +143,43 @@ Nyx::comoving_est_time_step (Real& cur_time, Real& estdt)
         // "old_a" and "new_a" -- we can't do that until after we compute dt and then
         // integrate a forward.
         fort_estdt_comoving_a
-            (&old_a, &new_dummy_a, &dt, &change_allowed, &final_a, &dt_modified);
+	  (&old_a, &new_dummy_a, &dt, &change_allowed, &fixed_da, &final_a, &dt_modified);
+    if(dt_binpow >= 0)
+      {
+	if(estdt>=dt)
+	  estdt=dt;
+	else if(estdt>.5*dt)
+	  {
+	    estdt=.5*dt;
+	    //	    std::cout << "Lavel = 1" <<std::endl;
+	  }
+	else if(estdt>.25*dt)
+	  {
+	    estdt=.25*dt;
+	    //	    std::cout << "Lavel = 2" <<std::endl;
+	  }
+	else if(estdt>.125*dt)
+	  {
+	    estdt=.125*dt;
+	    //	    std::cout << "Lavel = 3" <<std::endl;
+	  }
+	else if(estdt>.0625*dt)
+	  {
+	    estdt=.0625*dt;
+	    //	    std::cout << "Lavel = 4" <<std::endl;
+	  }
+	else
+	  {
+	    //dta*(2**(-1*np.ceil( np.log2(dta/dth))))
+	    estdt = dt*(pow(2,(-std::ceil( std::log2(dt/estdt)))));
+	    //	    std::cout << "Lavel > 4" <<std::endl;
+	  }
+	fort_integrate_comoving_a(&old_a,&new_dummy_a,&estdt);
+      }
+    else
+      {
+	estdt=std::min(estdt,dt);
+      }
 
         if (verbose && (dt_modified == 1) && ParallelDescriptor::IOProcessor())
         {
@@ -95,7 +198,6 @@ Nyx::comoving_est_time_step (Real& cur_time, Real& estdt)
        exit(0);
     } 
 
-    estdt = std::min(estdt, dt);
     return;
 }
 
@@ -232,7 +334,7 @@ Nyx::comoving_a_post_restart (const std::string& restart_file)
 
 #ifdef HEATCOOL
      // Initialize "this_z" in the atomic_rates_module
-     if (heat_cool_type == 1 || heat_cool_type == 3 || heat_cool_type == 5 || heat_cool_type == 7) {
+     if (heat_cool_type == 1 || heat_cool_type == 3 || heat_cool_type == 4 || heat_cool_type == 5 || heat_cool_type == 7 || heat_cool_type==9 || heat_cool_type==10 || heat_cool_type == 11) {
          Real old_z = 1.0/old_a - 1.0;
          fort_interp_to_this_z(&old_z);
      }

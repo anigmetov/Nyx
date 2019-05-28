@@ -34,7 +34,7 @@ subroutine integrate_state_fcvode(lo, hi, &
     use meth_params_module, only : NVAR, URHO, UEDEN, UEINT, &
                                    NDIAG, TEMP_COMP, NE_COMP, ZHI_COMP, &
                                    gamma_minus_1
-    use bl_constants_module, only: M_PI
+    use amrex_constants_module, only: M_PI
     use eos_params_module
     use network
     use eos_module, only: nyx_eos_T_given_Re, nyx_eos_given_RT
@@ -128,7 +128,7 @@ subroutine integrate_state_fcvode(lo, hi, &
       call amrex_abort('integrate_state_fcvode: FCVodeSStolerances() failed')
     end if
 
-    ierr = FCVDense(CVmem, neq)
+    ierr = FCVDiag(CVmem)
     if (ierr /= 0) then
        call amrex_abort('integrate_state_fcvode: FCVDense() failed')
     end if
@@ -153,8 +153,10 @@ subroutine integrate_state_fcvode(lo, hi, &
                 endif
 
                 if (e_orig .lt. 0.d0) then
+                    !$OMP CRITICAL
                     print *,'negative e entering strang integration ',z, i,j,k, rho/mean_rhob, e_orig
-                    call bl_abort('bad e in strang')
+                    call amrex_abort('bad e in strang')
+                    !$OMP END CRITICAL
                 end if
 
                 i_vode = i
@@ -165,13 +167,15 @@ subroutine integrate_state_fcvode(lo, hi, &
                                               T_out ,ne_out ,e_out)
 
                 if (e_out .lt. 0.d0) then
+                    !$OMP CRITICAL
                     print *,'negative e exiting strang integration ',z, i,j,k, rho/mean_rhob, e_out
+                    call flush(6)
+                    !$OMP END CRITICAL
                     T_out  = 10.0
                     ne_out = 0.0
                     mu     = (1.0d0+4.0d0*YHELIUM) / (1.0d0+YHELIUM+ne_out)
                     e_out  = T_out / (gamma_minus_1 * mp_over_kB * mu)
-                    call flush(6)
-!                    call bl_abort('bad e out of strang')
+!                    call amrex_abort('bad e out of strang')
                 end if
 
                 ! Update T and ne (do not use stuff computed in f_rhs, per vode manual)
@@ -180,12 +184,12 @@ subroutine integrate_state_fcvode(lo, hi, &
                 ! Instanteneous heating from reionization:
                 T_H = 0.0d0
                 if (inhomogeneous_on .or. flash_h) then
-                   if ((H_reion_z  .lt. z) .and. (H_reion_z  .ge. z_end)) T_H  = (1.0d0 - species(2))*T_zhi
+                   if ((H_reion_z  .lt. z) .and. (H_reion_z  .ge. z_end)) T_H  = (1.0d0 - species(2))*max((T_zhi-T_out), 0.0d0)
                 endif
 
                 T_He = 0.0d0
                 if (flash_he) then
-                   if ((He_reion_z .lt. z) .and. (He_reion_z .ge. z_end)) T_He = (1.0d0 - species(5))*T_zheii
+                   if ((He_reion_z .lt. z) .and. (He_reion_z .ge. z_end)) T_He = (1.0d0 - species(5))*max((T_zheii-T_out), 0.0d0)
                 endif
 
                 if ((T_H .gt. 0.0d0) .or. (T_He .gt. 0.0d0)) then

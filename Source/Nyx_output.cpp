@@ -33,6 +33,18 @@ Nyx::thePlotFileType () const
     return the_plot_file_type;
 }
 
+std::string
+Nyx::retrieveDM () {
+    return dm_chk_particle_file;
+}
+
+#ifdef AGN
+std::string
+Nyx::retrieveAGN () {
+    return agn_chk_particle_file;
+}
+#endif
+
 void
 Nyx::setPlotVariables ()
 {
@@ -174,8 +186,9 @@ Nyx::writePlotFile (const std::string& dir,
         //
         os << thePlotFileType() << '\n';
 
-        if (n_data_items == 0)
+        if (n_data_items == 0) {
             amrex::Error("Must specify at least one valid data item to plot");
+	}
 
         os << n_data_items << '\n';
         //
@@ -200,10 +213,10 @@ Nyx::writePlotFile (const std::string& dir,
         int f_lev = parent->finestLevel();
         os << f_lev << '\n';
         for (i = 0; i < BL_SPACEDIM; i++)
-            os << Geometry::ProbLo(i) << ' ';
+            os << Geom().ProbLo(i) << ' ';
         os << '\n';
         for (i = 0; i < BL_SPACEDIM; i++)
-            os << Geometry::ProbHi(i) << ' ';
+            os << Geom().ProbHi(i) << ' ';
         os << '\n';
         for (i = 0; i < f_lev; i++)
             os << parent->refRatio(i)[0] << ' ';
@@ -220,9 +233,159 @@ Nyx::writePlotFile (const std::string& dir,
                 os << parent->Geom(i).CellSize()[k] << ' ';
             os << '\n';
         }
-        os << (int) Geometry::Coord() << '\n';
+        os << (int) Geom().Coord() << '\n';
         os << "0\n"; // Write bndry data.
 
+        writeJobInfo(dir);
+    }
+
+    // Build the directory to hold the MultiFab at this level.
+    // The name is relative to the directory containing the Header file.
+    //
+    static const std::string BaseName = "/Cell";
+
+    std::string Level = amrex::Concatenate("Level_", level, 1);
+    //
+    // Now for the full pathname of that directory.
+    //
+    std::string FullPath = dir;
+    if ( ! FullPath.empty() && FullPath[FullPath.size()-1] != '/') {
+        FullPath += '/';
+    }
+    FullPath += Level;
+    //
+    // Only the I/O processor makes the directory if it doesn't already exist.
+    //
+    if( ! levelDirectoryCreated) {
+      amrex::Print() << "IOIOIOIO:CD  Nyx::writePlotFile:  ! ldc:  creating directory:  "
+                     << FullPath << '\n';
+      if (ParallelDescriptor::IOProcessor()) {
+        if ( ! amrex::UtilCreateDirectory(FullPath, 0755)) {
+            amrex::CreateDirectoryFailed(FullPath);
+	}
+      }
+      //
+      // Force other processors to wait until directory is built.
+      //
+      ParallelDescriptor::Barrier();
+    }
+
+    if (ParallelDescriptor::IOProcessor())
+    {
+        os << level << ' ' << grids.size() << ' ' << cur_time << '\n';
+        os << parent->levelSteps(level) << '\n';
+
+        for (i = 0; i < grids.size(); ++i)
+        {
+            RealBox gridloc = RealBox(grids[i], geom.CellSize(), geom.ProbLo());
+            for (n = 0; n < BL_SPACEDIM; n++)
+                os << gridloc.lo(n) << ' ' << gridloc.hi(n) << '\n';
+        }
+        //
+        // The full relative pathname of the MultiFabs at this level.
+        // The name is relative to the Header file containing this name.
+        // It's the name that gets written into the Header.
+        //
+        if (n_data_items > 0)
+        {
+            std::string PathNameInHeader = Level;
+            PathNameInHeader += BaseName;
+            os << PathNameInHeader << '\n';
+        }
+    }
+    //
+    // We combine all of the multifabs -- state, derived, etc -- into one
+    // multifab -- plotMF.
+    // NOTE: we are assuming that each state variable has one component,
+    // but a derived variable is allowed to have multiple components.
+    int cnt = 0;
+    const int nGrow = 0;
+    MultiFab plotMF(grids, dmap, n_data_items, nGrow);
+    MultiFab* this_dat = 0;
+    //
+    // Cull data from state variables -- use no ghost cells.
+    //
+    for (i = 0; i < plot_var_map.size(); i++)
+    {
+        int typ = plot_var_map[i].first;
+        int comp = plot_var_map[i].second;
+        this_dat = &state[typ].newData();
+        MultiFab::Copy(plotMF, *this_dat, comp, cnt, 1, nGrow);
+        cnt++;
+    }
+    //
+    // Cull data from derived variables.
+    //
+    if (derive_names.size() > 0)
+    {
+        for (std::list<std::string>::iterator it = derive_names.begin();
+             it != derive_names.end(); ++it)
+        {
+            const auto& derive_dat = derive(*it, cur_time, nGrow);
+            MultiFab::Copy(plotMF, *derive_dat, 0, cnt, 1, nGrow);
+            cnt++;
+        }
+    }
+
+    //
+    // Use the Full pathname when naming the MultiFab.
+    //
+    std::string TheFullPath = FullPath;
+    TheFullPath += BaseName;
+    VisMF::Write(plotMF, TheFullPath, how, true);
+
+    //
+    // Write the particles and `comoving_a` in a plotfile directory. 
+    //
+    particle_plot_file(dir);
+
+    // Write out all parameters into the plotfile
+    if (write_parameters_in_plotfile) {
+	write_parameter_file(dir);
+    }
+
+    if(Nyx::theDMPC()) {
+      Nyx::theDMPC()->SetLevelDirectoriesCreated(false);
+    }
+#ifdef AGN
+    if(Nyx::theAPC()) {
+      Nyx::theAPC()->SetLevelDirectoriesCreated(false);
+    }
+#endif
+
+}
+
+void
+Nyx::writePlotFilePre (const std::string& dir, ostream& os)
+{
+  if(Nyx::theDMPC()) {
+    Nyx::theDMPC()->WritePlotFilePre();
+  }
+#ifdef AGN
+  if(Nyx::theAPC()) {
+    Nyx::theAPC()->WritePlotFilePre();
+  }
+#endif
+
+}
+
+
+void
+Nyx::writePlotFilePost (const std::string& dir, ostream& os)
+{
+  if(Nyx::theDMPC()) {
+    Nyx::theDMPC()->WritePlotFilePost();
+  }
+#ifdef AGN
+  if(Nyx::theAPC()) {
+    Nyx::theAPC()->WritePlotFilePost();
+  }
+#endif
+}
+
+void
+Nyx::writeJobInfo (const std::string& dir)
+{
         // job_info file with details about the run
 	std::ofstream jobInfoFile;
 	std::string FullPathJobInfoFile = dir;
@@ -231,7 +394,7 @@ Nyx::writePlotFile (const std::string& dir,
 
 	std::string PrettyLine = std::string(78, '=') + "\n";
 	std::string OtherLine = std::string(78, '-') + "\n";
-	std::string SkipSpace = std::string(8, ' ') + "\n";
+	std::string SkipSpace = std::string(8, ' ');
 
 	// job information
 	jobInfoFile << PrettyLine;
@@ -335,12 +498,14 @@ Nyx::writePlotFile (const std::string& dir,
         jobInfoFile << " Grid Information\n";
         jobInfoFile << PrettyLine;
 
-        for (i = 0; i <= f_lev; i++)
+        int f_lev = parent->finestLevel();
+
+        for (int i = 0; i <= f_lev; i++)
           {
             jobInfoFile << " level: " << i << "\n";
             jobInfoFile << "   number of boxes = " << parent->numGrids(i) << "\n";
             jobInfoFile << "   maximum zones   = ";
-            for (n = 0; n < BL_SPACEDIM; n++)
+            for (int n = 0; n < BL_SPACEDIM; n++)
               {
                 jobInfoFile << parent->Geom(i).Domain().length(n) << " ";
                 //jobInfoFile << parent->Geom(i).ProbHi(n) << " ";
@@ -356,7 +521,7 @@ Nyx::writePlotFile (const std::string& dir,
 
 
         // these names correspond to the integer flags setup in the
-        // Castro_setup.cpp
+        // Nyx_setup.cpp
         const char* names_bc[] =
           { "interior", "inflow", "outflow",
             "symmetry", "slipwall", "noslipwall" };
@@ -384,104 +549,6 @@ Nyx::writePlotFile (const std::string& dir,
 	ParmParse::dumpTable(jobInfoFile, true);
 
 	jobInfoFile.close();
-
-    }
-    // Build the directory to hold the MultiFab at this level.
-    // The name is relative to the directory containing the Header file.
-    //
-    static const std::string BaseName = "/Cell";
-
-    std::string Level = amrex::Concatenate("Level_", level, 1);
-    //
-    // Now for the full pathname of that directory.
-    //
-    std::string FullPath = dir;
-    if (!FullPath.empty() && FullPath[FullPath.size()-1] != '/')
-        FullPath += '/';
-    FullPath += Level;
-    //
-    // Only the I/O processor makes the directory if it doesn't already exist.
-    //
-    if (ParallelDescriptor::IOProcessor())
-        if (!amrex::UtilCreateDirectory(FullPath, 0755))
-            amrex::CreateDirectoryFailed(FullPath);
-    //
-    // Force other processors to wait till directory is built.
-    //
-    ParallelDescriptor::Barrier();
-
-    if (ParallelDescriptor::IOProcessor())
-    {
-        os << level << ' ' << grids.size() << ' ' << cur_time << '\n';
-        os << parent->levelSteps(level) << '\n';
-
-        for (i = 0; i < grids.size(); ++i)
-        {
-            RealBox gridloc = RealBox(grids[i], geom.CellSize(), geom.ProbLo());
-            for (n = 0; n < BL_SPACEDIM; n++)
-                os << gridloc.lo(n) << ' ' << gridloc.hi(n) << '\n';
-        }
-        //
-        // The full relative pathname of the MultiFabs at this level.
-        // The name is relative to the Header file containing this name.
-        // It's the name that gets written into the Header.
-        //
-        if (n_data_items > 0)
-        {
-            std::string PathNameInHeader = Level;
-            PathNameInHeader += BaseName;
-            os << PathNameInHeader << '\n';
-        }
-    }
-    //
-    // We combine all of the multifabs -- state, derived, etc -- into one
-    // multifab -- plotMF.
-    // NOTE: we are assuming that each state variable has one component,
-    // but a derived variable is allowed to have multiple components.
-    int cnt = 0;
-    const int nGrow = 0;
-    MultiFab plotMF(grids, dmap, n_data_items, nGrow);
-    MultiFab* this_dat = 0;
-    //
-    // Cull data from state variables -- use no ghost cells.
-    //
-    for (i = 0; i < plot_var_map.size(); i++)
-    {
-        int typ = plot_var_map[i].first;
-        int comp = plot_var_map[i].second;
-        this_dat = &state[typ].newData();
-        MultiFab::Copy(plotMF, *this_dat, comp, cnt, 1, nGrow);
-        cnt++;
-    }
-    //
-    // Cull data from derived variables.
-    //
-    if (derive_names.size() > 0)
-    {
-        for (std::list<std::string>::iterator it = derive_names.begin();
-             it != derive_names.end(); ++it)
-        {
-            const auto& derive_dat = derive(*it, cur_time, nGrow);
-            MultiFab::Copy(plotMF, *derive_dat, 0, cnt, 1, nGrow);
-            cnt++;
-        }
-    }
-
-    //
-    // Use the Full pathname when naming the MultiFab.
-    //
-    std::string TheFullPath = FullPath;
-    TheFullPath += BaseName;
-    VisMF::Write(plotMF, TheFullPath, how, true);
-
-    //
-    // Write the particles and `comoving_a` in a plotfile directory. 
-    //
-    particle_plot_file(dir);
-
-    // Write out all parameters into the plotfile
-    if (write_parameters_in_plotfile)
-	write_parameter_file(dir);
 }
 
 void
@@ -513,8 +580,9 @@ Nyx::particle_plot_file (const std::string& dir)
             std::string FileName = dir + "/comoving_a";
             std::ofstream File;
             File.open(FileName.c_str(), std::ios::out|std::ios::trunc);
-            if (!File.good())
+            if ( ! File.good()) {
                 amrex::FileOpenFailed(FileName);
+	    }
             File.precision(15);
             if (cur_time == 0)
             {
@@ -531,8 +599,9 @@ Nyx::particle_plot_file (const std::string& dir)
             std::string FileName = dir + "/" + dm_plt_particle_file + "/precision";
             std::ofstream File;
             File.open(FileName.c_str(), std::ios::out|std::ios::trunc);
-            if (!File.good())
+            if ( ! File.good()) {
                 amrex::FileOpenFailed(FileName);
+	    }
             File.precision(15);
             File << particle_plotfile_format << '\n';
             File.close();
@@ -545,8 +614,9 @@ Nyx::particle_plot_file (const std::string& dir)
             std::string FileName = dir + "/" + agn_plt_particle_file + "/precision";
             std::ofstream File;
             File.open(FileName.c_str(), std::ios::out|std::ios::trunc);
-            if (!File.good())
+            if ( ! File.good()) {
                 amrex::FileOpenFailed(FileName);
+	    }
             File.precision(15);
             File << particle_plotfile_format << '\n';
             File.close();
@@ -558,6 +628,7 @@ Nyx::particle_plot_file (const std::string& dir)
 void
 Nyx::particle_check_point (const std::string& dir)
 {
+  BL_PROFILE("Nyx::particle_check_point");
   if (level == 0)
     {
       if (Nyx::theDMPC())
@@ -582,8 +653,9 @@ Nyx::particle_check_point (const std::string& dir)
             std::string FileName = dir + "/comoving_a";
             std::ofstream File;
             File.open(FileName.c_str(), std::ios::out|std::ios::trunc);
-            if (!File.good())
+            if ( ! File.good()) {
                 amrex::FileOpenFailed(FileName);
+	    }
             File.precision(15);
             if (cur_time == 0)
             {
@@ -605,8 +677,9 @@ Nyx::write_parameter_file (const std::string& dir)
             std::string FileName = dir + "/the_parameters";
             std::ofstream File;
             File.open(FileName.c_str(), std::ios::out|std::ios::trunc);
-            if (!File.good())
+            if ( ! File.good()) {
                 amrex::FileOpenFailed(FileName);
+	    }
             File.precision(15);
             ParmParse::dumpTable(File,true);
             File.close();
@@ -622,8 +695,9 @@ Nyx::writeMultiFabAsPlotFile(const std::string& pltfile,
     std::ofstream os;
     if (ParallelDescriptor::IOProcessor())
     {
-        if (!amrex::UtilCreateDirectory(pltfile, 0755))
-                                  amrex::CreateDirectoryFailed(pltfile);
+        if( ! amrex::UtilCreateDirectory(pltfile, 0755)) {
+          amrex::CreateDirectoryFailed(pltfile);
+	}
         std::string HeaderFileName = pltfile + "/Header";
         os.open(HeaderFileName.c_str(), std::ios::out|std::ios::trunc|std::ios::binary);
         // The first thing we write out is the plotfile type.
@@ -639,10 +713,10 @@ Nyx::writeMultiFabAsPlotFile(const std::string& pltfile,
         // One level
         os << "0\n";
         for (int i = 0; i < BL_SPACEDIM; i++)
-            os << Geometry::ProbLo(i) << ' ';
+            os << Geom().ProbLo(i) << ' ';
         os << '\n';
         for (int i = 0; i < BL_SPACEDIM; i++)
-            os << Geometry::ProbHi(i) << ' ';
+            os << Geom().ProbHi(i) << ' ';
         os << '\n';
         // Only one level -> no refinement ratios
         os << '\n';
@@ -654,7 +728,7 @@ Nyx::writeMultiFabAsPlotFile(const std::string& pltfile,
         for (int k = 0; k < BL_SPACEDIM; k++)
             os << parent->Geom(0).CellSize()[k] << ' ';
         os << '\n';
-        os << (int) Geometry::Coord() << '\n';
+        os << (int) Geom().Coord() << '\n';
         os << "0\n"; // Write bndry data.
     }
     // Build the directory to hold the MultiFab at this level.
@@ -666,17 +740,20 @@ Nyx::writeMultiFabAsPlotFile(const std::string& pltfile,
     // Now for the full pathname of that directory.
     //
     std::string FullPath = pltfile;
-    if (!FullPath.empty() && FullPath[FullPath.size()-1] != '/')
+    if ( ! FullPath.empty() && FullPath[FullPath.size()-1] != '/') {
         FullPath += '/';
+    }
     FullPath += Level;
     //
     // Only the I/O processor makes the directory if it doesn't already exist.
     //
-    if (ParallelDescriptor::IOProcessor())
-        if (!amrex::UtilCreateDirectory(FullPath, 0755))
+    if (ParallelDescriptor::IOProcessor()) {
+        if ( ! amrex::UtilCreateDirectory(FullPath, 0755)) {
             amrex::CreateDirectoryFailed(FullPath);
+	}
+    }
     //
-    // Force other processors to wait till directory is built.
+    // Force other processors to wait until directory is built.
     //
     ParallelDescriptor::Barrier();
 
@@ -722,7 +799,11 @@ Nyx::checkPoint (const std::string& dir,
                  bool               dump_old_default)
 {
   AmrLevel::checkPoint(dir, os, how, dump_old);
+
   particle_check_point(dir);
+
+  writeJobInfo(dir);
+
 #ifdef FORCING
   forcing_check_point(dir);
 #endif
@@ -740,7 +821,48 @@ Nyx::checkPoint (const std::string& dir,
 	CPUFile.close();
       }
     }
+
+    if(Nyx::theDMPC()) {
+      Nyx::theDMPC()->SetLevelDirectoriesCreated(false);
+    }
+#ifdef AGN
+    if(Nyx::theAPC()) {
+      Nyx::theAPC()->SetLevelDirectoriesCreated(false);
+    }
+#endif
+
 }
+
+void
+Nyx::checkPointPre (const std::string& dir,
+                    std::ostream&      os)
+{
+  if(Nyx::theDMPC()) {
+    Nyx::theDMPC()->CheckpointPre();
+  }
+#ifdef AGN
+  if(Nyx::theAPC()) {
+    Nyx::theAPC()->CheckpointPre();
+  }
+#endif
+
+}
+
+
+void
+Nyx::checkPointPost (const std::string& dir,
+                 std::ostream&      os)
+{
+  if(Nyx::theDMPC()) {
+    Nyx::theDMPC()->CheckpointPost();
+  }
+#ifdef AGN
+  if(Nyx::theAPC()) {
+    Nyx::theAPC()->CheckpointPost();
+  }
+#endif
+}
+
 
 #ifdef FORCING
 void
@@ -753,8 +875,9 @@ Nyx::forcing_check_point (const std::string& dir)
             std::string FileName = dir + "/forcing";
             std::ofstream File;
             File.open(FileName.c_str(), std::ios::out|std::ios::trunc);
-            if (!File.good())
+            if ( ! File.good()) {
                 amrex::FileOpenFailed(FileName);
+	    }
             File.setf(std::ios::scientific, std::ios::floatfield);
             File.precision(16);
             forcing->write_Spectrum(File);
@@ -762,8 +885,9 @@ Nyx::forcing_check_point (const std::string& dir)
 
             FileName = dir + "/mt";
             File.open(FileName.c_str(), std::ios::out|std::ios::trunc);
-            if (!File.good())
+            if ( ! File.good()) {
                 amrex::FileOpenFailed(FileName);
+	    }
             mt_write(File);
         }
     }

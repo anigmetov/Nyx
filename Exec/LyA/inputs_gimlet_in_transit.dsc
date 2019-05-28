@@ -1,6 +1,3 @@
-# This is an example script that shows how to run a larger Nyx problem with
-# sidecars doing post-processing. The sidecar-specific parameters are at the
-# end of the inputs file.
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step = 400
@@ -10,7 +7,7 @@ nyx.ppm_reference    = 1
 nyx.use_colglaz      = 0
 nyx.corner_coupling  = 1
 
-nyx.add_ext_src      = 1
+nyx.add_ext_src      = 0
 nyx.heat_cool_type   = 3
 nyx.strang_split     = 1
 
@@ -41,8 +38,6 @@ amr.data_log = runlog
 gravity.gravity_type = PoissonGrav
 gravity.no_sync      = 1
 gravity.no_composite = 1
-gravity.solve_with_hpgmg = 0
-
 mg.bottom_solver = 4
 
 # PROBLEM SIZE & GEOMETRY
@@ -73,7 +68,7 @@ nyx.do_grav  = 1
 # COMOVING
 nyx.comoving_OmM = 0.27
 nyx.comoving_OmB = 0.045
-nyx.comoving_h   = 0.71d0
+nyx.comoving_h   = 0.71e0
 
 # PARTICLES
 nyx.do_dm_particles = 1
@@ -130,7 +125,6 @@ amr.plot_file       = plt
 amr.plot_int        = 20
 amr.plot_nfiles     = 86
 #nyx.plot_z_values   = 4.0 3.5 3.0 2.5 2.25 2.0
-#particles.write_in_plotfile = 1
 
 amr.plot_vars        = density
 #amr.derive_plot_vars = particle_mass_density
@@ -138,11 +132,3 @@ amr.plot_vars        = density
 #PROBIN FILENAME
 amr.probin_file = probin
 
-# >>>>>>>>>>>>>>>>>>>> SIDECARS <<<<<<<<<<<<<<<<<<<<
-# how many MPI procs to use for sidecars?
-nSidecars = 256
-# how to distribute grids on sidecar procs? "2" means random
-how = 2
-# time step interval for doing Gimlet analysis
-nyx.gimlet_int = 5
-# >>>>>>>>>>>>>>>>>>>> SIDECARS <<<<<<<<<<<<<<<<<<<<

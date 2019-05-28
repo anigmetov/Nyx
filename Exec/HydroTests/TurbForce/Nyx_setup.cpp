@@ -4,9 +4,6 @@
 #include "Nyx.H"
 #include "Nyx_F.H"
 #include "Derive_F.H"
-#ifdef FORCING
-#include "Forcing.H"
-#endif
 
 using namespace amrex;
 using std::string;
@@ -134,47 +131,6 @@ Nyx::variable_setup()
     error_setup();
 }
 
-void
-Nyx::variable_setup_for_new_comp_procs()
-{
-std::cout << "***** fix Nyx::variable_setup_for_new_comp_procs()" << std::endl;
-/*
-    BL_ASSERT(desc_lst.size() == 0);
-//    desc_lst.clear();
-//    derive_lst.clear();
-
-    // Initialize the network
-    network_init();
-
-
-
-
-    // Get options, set phys_bc
-    read_params();
-
-#ifdef NO_HYDRO
-    no_hydro_setup();
-
-#else
-    if (do_hydro == 1) 
-    {
-       hydro_setup();
-    }
-#ifdef GRAVITY
-    else
-    {
-       no_hydro_setup();
-    }
-#endif
-#endif
-
-    //
-    // DEFINE ERROR ESTIMATION QUANTITIES
-    //
-    error_setup();
-*/
-}
-
 #ifndef NO_HYDRO
 void
 Nyx::hydro_setup()
@@ -197,8 +153,16 @@ Nyx::hydro_setup()
         cnt += NumAdv;
     }
 
+    int NDIAG_C;
     Temp_comp = 0;
       Ne_comp = 1;
+    if (inhomo_reion > 0)
+    {
+        NDIAG_C  = 3;
+        Zhi_comp = 2;
+    } else {
+        NDIAG_C  = 2;
+    }
 
     int dm = BL_SPACEDIM;
 
@@ -228,17 +192,23 @@ Nyx::hydro_setup()
     // Define NUM_GROW from the f90 module.
     fort_get_method_params(&NUM_GROW);
 
+    // Note that we must set NDIAG_C before we call set_method_params because
+    // we use the C++ value to set the Fortran value
     fort_set_method_params
-        (dm, NumAdv, do_hydro, ppm_type, ppm_reference,
+        (dm, NumAdv, NDIAG_C, do_hydro, ppm_type, ppm_reference,
          ppm_flatten_before_integrals,
          use_colglaz, use_flattening, corner_coupling, version_2,
          use_const_species, gamma, normalize_species,
-         heat_cool_type);
+         heat_cool_type, inhomo_reion);
+
+#ifdef HEATCOOL
+    fort_tabulate_rates();
+#endif
 
     if (use_const_species == 1)
         fort_set_eos_params(h_species, he_species);
 
-    int coord_type = Geometry::Coord();
+    int coord_type = DefaultGeometry().Coord();
     fort_set_problem_params
          (dm, phys_bc.lo(), phys_bc.hi(), Outflow, Symmetry, coord_type);
 
@@ -258,8 +228,16 @@ Nyx::hydro_setup()
 
     // This has two components: Temperature and Ne
     desc_lst.addDescriptor(DiagEOS_Type, IndexType::TheCellType(),
-                           StateDescriptor::Point, 1, 2, interp,
+                           StateDescriptor::Point, 1, NDIAG_C, interp,
                            state_data_extrap, store_in_checkpoint);
+
+#ifdef SDC
+    // This only has one component -- the update to rho_e from reactions
+    store_in_checkpoint = true;
+    desc_lst.addDescriptor(SDC_IR_Type, IndexType::TheCellType(),
+                           StateDescriptor::Point, 1, 1, interp,
+                           state_data_extrap, store_in_checkpoint);
+#endif
 
 #ifdef GRAVITY
     store_in_checkpoint = true;
@@ -378,6 +356,18 @@ Nyx::hydro_setup()
                           BndryFunc(generic_fill));
     desc_lst.setComponent(DiagEOS_Type, 1, "Ne", bc,
                           BndryFunc(generic_fill));
+
+    if (inhomo_reion > 0) {
+       desc_lst.setComponent(DiagEOS_Type, 2, "Z_HI", bc,
+                             BndryFunc(generic_fill));
+    }
+
+#ifdef SDC
+    set_scalar_bc(bc, phys_bc);
+    desc_lst.setComponent(SDC_IR_Type, 0, "I_R", bc,
+                          BndryFunc(generic_fill));
+#endif
+
 #ifdef GRAVITY
     if (do_grav)
     {
@@ -441,17 +431,6 @@ Nyx::hydro_setup()
     //derive_lst.addComponent("rhog",desc_lst,State_Type,Density,1);
     //derive_lst.addComponent("rhog",desc_lst,Gravity_Type,0,BL_SPACEDIM);
 #endif
-
-    //
-    // Entropy (S)
-    //
-    derive_lst.add("entropy", IndexType::TheCellType(), 1,
-                   BL_FORT_PROC_CALL(DERENTROPY, derentropy),
-                   the_same_box);
-    // We add exactly (Density,Xmom,Ymom,Zmom,Eden,Eint) from State and
-    //                (Temp   ,Ne) from Diag_EOS
-    derive_lst.addComponent("entropy", desc_lst, State_Type, Density, 6);
-    derive_lst.addComponent("entropy", desc_lst, DiagEOS_Type,     0, 2);
 
     //
     // Div(u)
@@ -619,9 +598,6 @@ Nyx::hydro_setup()
                    BL_FORT_PROC_CALL(DERNULL, dernull), grow_box_by_one);
     derive_lst.addComponent("total_density", desc_lst, State_Type,
                             Density, 1);
-    //
-    // Forcing
-    //
     derive_lst.add("Rank", IndexType::TheCellType(), 1,
                    BL_FORT_PROC_CALL(DERNULL, dernull), grow_box_by_one);
 
@@ -656,17 +632,21 @@ Nyx::no_hydro_setup()
     Density = 0;
     NUM_STATE = 1;
 
+    int NDIAG_C = -1;
+
     // Define NUM_GROW from the f90 module.
     fort_get_method_params(&NUM_GROW);
 
     fort_set_method_params
-        (dm, NumAdv, do_hydro, ppm_type, ppm_reference,
+        (dm, NumAdv, NDIAG_C, do_hydro, ppm_type, ppm_reference,
          ppm_flatten_before_integrals,
          use_colglaz, use_flattening, corner_coupling, version_2,
          use_const_species, gamma, normalize_species,
-         heat_cool_type);
+         heat_cool_type, inhomo_reion);
 
-    int coord_type = Geometry::Coord();
+    fort_tabulate_rates();
+
+    int coord_type = DefaultGeometry().Coord();
     fort_set_problem_params(dm, phys_bc.lo(), phys_bc.hi(), Outflow, Symmetry, coord_type);
 
     // Note that the default is state_data_extrap = false,
@@ -770,3 +750,22 @@ Nyx::no_hydro_setup()
 }
 #endif
 
+#ifdef AMREX_USE_CVODE
+void
+Nyx::set_simd_width(const int simd_width)
+{
+    set_simd(&simd_width);
+}
+
+void
+Nyx::alloc_simd_vec()
+{
+    fort_alloc_simd_vec();
+}
+
+void
+Nyx::dealloc_simd_vec()
+{
+    fort_dealloc_simd_vec();
+}
+#endif

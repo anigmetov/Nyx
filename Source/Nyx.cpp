@@ -15,7 +15,6 @@ using std::string;
 
 #include <AMReX_CONSTANTS.H>
 #include <Nyx.H>
-#include <Nyx_slice.H>
 #include <Nyx_F.H>
 #include <Derive_F.H>
 #include <AMReX_VisMF.H>
@@ -123,7 +122,10 @@ Real Nyx::comoving_h;
 int Nyx::do_hydro = -1;
 int Nyx::add_ext_src = 0;
 int Nyx::heat_cool_type = 0;
-int Nyx::strang_split = 0;
+int Nyx::strang_split = 1;
+#ifdef SDC
+int Nyx::sdc_split    = 0;
+#endif
 
 Real Nyx::average_gas_density = 0;
 Real Nyx::average_dm_density = 0;
@@ -206,9 +208,6 @@ Real         Nyx::startCPUTime = 0.0;
 int reeber_int(0);
 int gimlet_int(0);
 
-int Nyx::forceParticleRedist = false;
-int Nyx::nSidecarProcs(0);
-
 // Note: Nyx::variableSetUp is in Nyx_setup.cpp
 void
 Nyx::variable_cleanup ()
@@ -245,29 +244,29 @@ Nyx::read_params ()
 
     done = true;  // ?
 
-    ParmParse pp("nyx");
+    ParmParse pp_nyx("nyx");
 
-    pp.query("v", verbose);
-    pp.get("init_shrink", init_shrink);
-    pp.get("cfl", cfl);
-    pp.query("change_max", change_max);
-    pp.query("fixed_dt", fixed_dt);
-    pp.query("initial_dt", initial_dt);
-    pp.query("sum_interval", sum_interval);
-    pp.query("do_reflux", do_reflux);
+    pp_nyx.query("v", verbose);
+    pp_nyx.get("init_shrink", init_shrink);
+    pp_nyx.get("cfl", cfl);
+    pp_nyx.query("change_max", change_max);
+    pp_nyx.query("fixed_dt", fixed_dt);
+    pp_nyx.query("initial_dt", initial_dt);
+    pp_nyx.query("sum_interval", sum_interval);
+    pp_nyx.query("do_reflux", do_reflux);
     do_reflux = (do_reflux ? 1 : 0);
-    pp.get("dt_cutoff", dt_cutoff);
+    pp_nyx.get("dt_cutoff", dt_cutoff);
 
-    pp.query("dump_old", dump_old);
+    pp_nyx.query("dump_old", dump_old);
 
-    pp.query("small_dens", small_dens);
-    pp.query("small_temp", small_temp);
-    pp.query("gamma", gamma);
+    pp_nyx.query("small_dens", small_dens);
+    pp_nyx.query("small_temp", small_temp);
+    pp_nyx.query("gamma", gamma);
 
-    pp.query("strict_subcycling",strict_subcycling);
+    pp_nyx.query("strict_subcycling",strict_subcycling);
 
-#ifdef USE_CVODE
-    pp.query("simd_width", simd_width);
+#ifdef AMREX_USE_CVODE
+    pp_nyx.query("simd_width", simd_width);
     if (simd_width < 1) amrex::Abort("simd_width must be a positive integer");
     set_simd_width(simd_width);
 
@@ -278,8 +277,8 @@ Nyx::read_params ()
 
     // Get boundary conditions
     Vector<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);
-    pp.getarr("lo_bc", lo_bc, 0, BL_SPACEDIM);
-    pp.getarr("hi_bc", hi_bc, 0, BL_SPACEDIM);
+    pp_nyx.getarr("lo_bc", lo_bc, 0, BL_SPACEDIM);
+    pp_nyx.getarr("hi_bc", hi_bc, 0, BL_SPACEDIM);
     for (int i = 0; i < BL_SPACEDIM; i++)
     {
         phys_bc.setLo(i, lo_bc[i]);
@@ -290,14 +289,14 @@ Nyx::read_params ()
     // Check phys_bc against possible periodic geometry
     // if periodic, must have internal BC marked.
     //
-    if (Geometry::isAnyPeriodic())
+    if (DefaultGeometry().isAnyPeriodic())
     {
         //
         // Do idiot check.  Periodic means interior in those directions.
         //
         for (int dir = 0; dir < BL_SPACEDIM; dir++)
         {
-            if (Geometry::isPeriodic(dir))
+            if (DefaultGeometry().isPeriodic(dir))
             {
                 if (lo_bc[dir] != Interior)
                 {
@@ -340,15 +339,15 @@ Nyx::read_params ()
         }
     }
 
-    pp.get("comoving_OmB", comoving_OmB);
-    pp.get("comoving_OmM", comoving_OmM);
-    pp.get("comoving_h", comoving_h);
+    pp_nyx.get("comoving_OmB", comoving_OmB);
+    pp_nyx.get("comoving_OmM", comoving_OmM);
+    pp_nyx.get("comoving_h", comoving_h);
 
     fort_set_omb(comoving_OmB);
     fort_set_omm(comoving_OmM);
     fort_set_hubble(comoving_h);
 
-    pp.get("do_hydro", do_hydro);
+    pp_nyx.get("do_hydro", do_hydro);
 #ifdef NO_HYDRO
     if (do_hydro == 1)
         amrex::Error("Cant have do_hydro == 1 when NO_HYDRO is true");
@@ -360,11 +359,23 @@ Nyx::read_params ()
 #endif
 #endif
 
-    pp.query("add_ext_src", add_ext_src);
-    pp.query("strang_split", strang_split);
+    pp_nyx.query("add_ext_src", add_ext_src);
+    pp_nyx.query("strang_split", strang_split);
+#ifdef SDC
+    pp_nyx.query("sdc_split", sdc_split);
+    if (sdc_split == 1 && strang_split == 1)
+        amrex::Error("Cant have strang_split == 1 and sdc_split == 1");
+    if (sdc_split == 0 && strang_split == 0)
+        amrex::Error("Cant have strang_split == 0 and sdc_split == 0");
+    if (sdc_split != 1 && strang_split != 1)
+        amrex::Error("Cant have strang_split != 1 and sdc_split != 1");
+#else
+    if (strang_split != 1)
+        amrex::Error("Cant have strang_split != 1 with USE_SDC != TRUE");
+#endif
 
 #ifdef FORCING
-    pp.get("do_forcing", do_forcing);
+    pp_nyx.get("do_forcing", do_forcing);
 #ifdef NO_HYDRO
     if (do_forcing == 1)
         amrex::Error("Cant have do_forcing == 1 when NO_HYDRO is true ");
@@ -376,7 +387,7 @@ Nyx::read_params ()
        amrex::Error("Nyx::you set do_forcing = 1 but forgot to set USE_FORCING = TRUE ");
 #endif
 
-    pp.query("heat_cool_type", heat_cool_type);
+    pp_nyx.query("heat_cool_type", heat_cool_type);
     if (heat_cool_type == 7)
     {
       amrex::Print() << "----- WARNING WARNING WARNING WARNING WARNING -----" << std::endl;
@@ -386,53 +397,82 @@ Nyx::read_params ()
       amrex::Print() << "                                                   " << std::endl;
       amrex::Print() << "----- WARNING WARNING WARNING WARNING WARNING -----" << std::endl;
       Vector<int> n_cell(BL_SPACEDIM);
-      ParmParse pp("amr");
-      pp.getarr("n_cell", n_cell, 0, BL_SPACEDIM);
+
+      ParmParse pp_amr("amr");
+      pp_amr.getarr("n_cell", n_cell, 0, BL_SPACEDIM);
       if (n_cell[0] % simd_width) {
         const std::string errmsg = "Currently the SIMD CVODE solver requires that n_cell[0] % simd_width = 0";
         amrex::Abort(errmsg);
       }
     }
+    if (heat_cool_type == 9)
+    {
+      amrex::Print() << "----- WARNING WARNING WARNING WARNING WARNING -----" << std::endl;
+      amrex::Print() << "                                                   " << std::endl;
+      amrex::Print() << "      ARKODE interface is currently EXPERIMENTAL.  " << std::endl;
+      amrex::Print() << "      Use at your own risk.                        " << std::endl;
+      amrex::Print() << "                                                   " << std::endl;
+      amrex::Print() << "----- WARNING WARNING WARNING WARNING WARNING -----" << std::endl;
+    }
 
-    pp.query("use_exact_gravity", use_exact_gravity);
+    pp_nyx.query("use_exact_gravity", use_exact_gravity);
 
-    pp.query("inhomo_reion", inhomo_reion);
+    pp_nyx.query("inhomo_reion", inhomo_reion);
 
     if (inhomo_reion) {
-        pp.get("inhomo_zhi_file", inhomo_zhi_file);
-        pp.get("inhomo_grid", inhomo_grid);
+        pp_nyx.get("inhomo_zhi_file", inhomo_zhi_file);
+        pp_nyx.get("inhomo_grid", inhomo_grid);
     }
 
 #ifdef HEATCOOL
-    if (heat_cool_type > 0 && add_ext_src == 0)
-       amrex::Error("Nyx::must set add_ext_src to 1 if heat_cool_type > 0");
-    if (heat_cool_type != 1 && heat_cool_type != 3 && heat_cool_type != 5 && heat_cool_type != 7)
-       amrex::Error("Nyx:: nonzero heat_cool_type must equal 1 or 3 or 5 or 7");
+    if (heat_cool_type != 3 && heat_cool_type !=4 && heat_cool_type != 5 && heat_cool_type != 7 && heat_cool_type != 9 && heat_cool_type != 10 && heat_cool_type != 11)
+       amrex::Error("Nyx:: nonzero heat_cool_type must equal 3 or 5 or 7 or 9 or 10 or 11");
     if (heat_cool_type == 0)
        amrex::Error("Nyx::contradiction -- HEATCOOL is defined but heat_cool_type == 0");
 
     if (ParallelDescriptor::IOProcessor()) {
       std::cout << "Integrating heating/cooling method with the following method: ";
-      switch (heat_cool_type) {
-        case 1:
-          std::cout << "HC";
-          break;
-        case 3:
-          std::cout << "VODE";
-          break;
-        case 5:
-          std::cout << "CVODE";
-          break;
-        case 7:
-          std::cout << "SIMD CVODE";
-          break;
+      switch (heat_cool_type)
+	{
+	case 3:
+	  std::cout << "VODE";
+	  break;
+	case 4:
+	  std::cout << "Exact";
+	  break;
+	case 5:
+	  std::cout << "CVODE";
+	  break;
+	case 7:
+	  std::cout << "SIMD CVODE";
+	break;
+	case 9:
+	  std::cout << "ARKODE";
+	break;
+	case 10:
+	  std::cout << "Vectorized copytomem CVODE";
+	  break;
+	case 11:
+	  std::cout << "Vectorized CVODE";
+	  break;
       }
       std::cout << std::endl;
     }
 
-#ifndef USE_CVODE
-    if (heat_cool_type == 5 || heat_cool_type == 7)
-        amrex::Error("Nyx:: cannot set heat_cool_type = 5 or 7 unless USE_CVODE=TRUE");
+#ifndef AMREX_USE_CVODE
+    #ifndef AMREX_USE_SUNDIALS_3x4x
+    if (heat_cool_type == 5 || heat_cool_type == 7 || heat_cool_type == 10 || heat_cool_type == 11)
+        amrex::Error("Nyx:: cannot set heat_cool_type = 5 or 7 or 10 or 11 unless USE_CVODE=TRUE or USE_SUNDIALS_3x4x=TRUE");
+    #ifndef AMREX_USE_ARKODE_LIBS
+    if (heat_cool_type == 9)
+        amrex::Error("Nyx:: cannot set heat_cool_type = 9 unless USE_SUNDIALS_3x4x=TRUE, and USE_ARKODE_LIBS=TRUE");
+    #endif
+    #endif
+#else
+    #ifdef SDC
+    if (heat_cool_type == 7 && sdc_split == 1)
+        amrex::Error("Nyx:: cannot set heat_cool_type = 7 with sdc_split = 1");
+    #endif
 #endif
 
 #else
@@ -442,23 +482,23 @@ Nyx::read_params ()
        amrex::Error("Nyx::you set inhomo_reion > 0 but forgot to set USE_HEATCOOL = TRUE");
 #endif
 
-    pp.query("allow_untagging", allow_untagging);
-    pp.query("use_const_species", use_const_species);
-    pp.query("normalize_species", normalize_species);
-    pp.query("ppm_type", ppm_type);
-    pp.query("ppm_reference", ppm_reference);
-    pp.query("ppm_flatten_before_integrals", ppm_flatten_before_integrals);
-    pp.query("use_flattening", use_flattening);
-    pp.query("use_colglaz", use_colglaz);
-    pp.query("version_2", version_2);
-    pp.query("corner_coupling", corner_coupling);
+    pp_nyx.query("allow_untagging", allow_untagging);
+    pp_nyx.query("use_const_species", use_const_species);
+    pp_nyx.query("normalize_species", normalize_species);
+    pp_nyx.query("ppm_type", ppm_type);
+    pp_nyx.query("ppm_reference", ppm_reference);
+    pp_nyx.query("ppm_flatten_before_integrals", ppm_flatten_before_integrals);
+    pp_nyx.query("use_flattening", use_flattening);
+    pp_nyx.query("use_colglaz", use_colglaz);
+    pp_nyx.query("version_2", version_2);
+    pp_nyx.query("corner_coupling", corner_coupling);
 
     if (do_hydro == 1)
     {
         if (do_hydro == 1 && use_const_species == 1)
         {
-           pp.get("h_species" ,  h_species);
-           pp.get("he_species", he_species);
+           pp_nyx.get("h_species" ,  h_species);
+           pp_nyx.get("he_species", he_species);
            fort_set_xhydrogen(h_species);
            if (ParallelDescriptor::IOProcessor())
            {
@@ -501,42 +541,42 @@ Nyx::read_params ()
     if (do_hydro == 0) do_reflux = 0;
 
 #ifdef GRAVITY
-    pp.get("do_grav", do_grav);
+    pp_nyx.get("do_grav", do_grav);
 #endif
 
     read_particle_params();
 
     read_init_params();
 
-    pp.query("write_parameter_file",write_parameters_in_plotfile);
-    pp.query("print_fortran_warnings",print_fortran_warnings);
+    pp_nyx.query("write_parameter_file",write_parameters_in_plotfile);
+    pp_nyx.query("print_fortran_warnings",print_fortran_warnings);
 
     read_comoving_params();
 
-    if (pp.contains("plot_z_values"))
+    if (pp_nyx.contains("plot_z_values"))
     {
-      int num_z_values = pp.countval("plot_z_values");
+      int num_z_values = pp_nyx.countval("plot_z_values");
       plot_z_values.resize(num_z_values);
-      pp.queryarr("plot_z_values",plot_z_values,0,num_z_values);
+      pp_nyx.queryarr("plot_z_values",plot_z_values,0,num_z_values);
     }
 
-    if (pp.contains("analysis_z_values"))
+    if (pp_nyx.contains("analysis_z_values"))
     {
-      int num_z_values = pp.countval("analysis_z_values");
+      int num_z_values = pp_nyx.countval("analysis_z_values");
       analysis_z_values.resize(num_z_values);
-      pp.queryarr("analysis_z_values",analysis_z_values,0,num_z_values);
+      pp_nyx.queryarr("analysis_z_values",analysis_z_values,0,num_z_values);
     }
 
     // How often do we want to write x,y,z 2-d slices of S_new
-    pp.query("slice_int",    slice_int);
-    pp.query("slice_file",   slice_file);
-    pp.query("slice_nfiles", slice_nfiles);
+    pp_nyx.query("slice_int",    slice_int);
+    pp_nyx.query("slice_file",   slice_file);
+    pp_nyx.query("slice_nfiles", slice_nfiles);
 
-    pp.query("gimlet_int", gimlet_int);
+    pp_nyx.query("gimlet_int", gimlet_int);
 
 #ifdef AGN
-    pp.query("mass_halo_min", mass_halo_min);
-    pp.query("mass_seed", mass_seed);
+    pp_nyx.query("mass_halo_min", mass_halo_min);
+    pp_nyx.query("mass_seed", mass_seed);
 #endif
 }
 
@@ -621,13 +661,8 @@ Nyx::Nyx (Amr&            papa,
 
 #ifdef HEATCOOL
      // Initialize "this_z" in the atomic_rates_module
-    if (heat_cool_type == 1 || heat_cool_type == 3 || heat_cool_type == 5 || heat_cool_type == 7)
+    if (heat_cool_type == 3 || heat_cool_type == 4 || heat_cool_type == 5 || heat_cool_type == 7 || heat_cool_type == 9 || heat_cool_type == 10 || heat_cool_type == 11)
          fort_interp_to_this_z(&initial_z);
-#endif
-
-#ifdef AGN
-     // Initialize the uniform(0,1) random number generator.
-     init_uniform01_rng();
 #endif
 }
 
@@ -764,9 +799,14 @@ Nyx::init (AmrLevel& old)
     }
 #endif
 
-    // Set E in terms of e + kinetic energy
-    // if (do_hydro)
-    // enforce_consistent_e(S_new);
+#ifdef SDC
+    MultiFab& IR_new = get_new_data(SDC_IR_Type);
+    for (FillPatchIterator fpi(old, IR_new, 0, cur_time, SDC_IR_Type, 0, 1);
+         fpi.isValid(); ++fpi)
+    {
+        IR_new[fpi].copy(fpi());
+    }
+#endif
 }
 
 //
@@ -804,10 +844,6 @@ Nyx::init ()
     // We set dt to be large for this new level to avoid screwing up
     // computeNewDt.
     parent->setDtLevel(1.e100, level);
-
-    // Set E in terms of e + kinetic energy
-    // if (do_hydro)
-    // enforce_consistent_e(S_new);
 }
 
 Real
@@ -1290,13 +1326,9 @@ Nyx::post_timestep (int iteration)
     if ((iteration < ncycle and level < finest_level) || level == 0)
     {
         for (int i = 0; i < theActiveParticles().size(); i++)
-        {
-            int ngrow = (level == 0) ? 0 : iteration;
-
             theActiveParticles()[i]->Redistribute(level,
                                                   theActiveParticles()[i]->finestLevel(),
                                                   iteration);
-         }
     }
 
 #ifndef NO_HYDRO
@@ -1443,8 +1475,16 @@ Nyx::post_timestep (int iteration)
 #ifndef NO_HYDRO
     if (do_hydro)
     {
+       MultiFab& S_new = get_new_data(State_Type);
+       MultiFab& D_new = get_new_data(DiagEOS_Type);
+
+       // First reset internal energy before call to compute_temp
+       MultiFab reset_e_src(S_new.boxArray(), S_new.DistributionMap(), 1, NUM_GROW);
+       reset_e_src.setVal(0.0);
+       reset_internal_energy(S_new,D_new,reset_e_src);
+
        // Re-compute temperature after all the other updates.
-       compute_new_temp();
+       compute_new_temp(S_new,D_new);
     }
 #endif
 }
@@ -1501,8 +1541,9 @@ Nyx::post_restart ()
             {
                 // Do multilevel solve here.  We now store phi in the checkpoint file so we can use it
                 //  at restart.
+                int ngrow_for_solve = 1;
                 int use_previous_phi_as_guess = 1;
-                gravity->multilevel_solve_for_phi(0,parent->finestLevel(),use_previous_phi_as_guess);
+                gravity->multilevel_solve_for_new_phi(0,parent->finestLevel(),ngrow_for_solve,use_previous_phi_as_guess);
 
 #ifndef AGN
                 if (do_dm_particles)
@@ -1580,9 +1621,6 @@ Nyx::postCoarseTimeStep (Real cumtime)
 
    AmrLevel::postCoarseTimeStep(cumtime);
 
-   const Real cur_time = state[State_Type].curTime();
-   const int whichSidecar(0);
-
 #ifdef AGN
    halo_find(parent->dtLevel(level));
 #endif 
@@ -1601,6 +1639,9 @@ Nyx::postCoarseTimeStep (Real cumtime)
 
    if (slice_int > -1 && nstep%slice_int == 0)
    {
+      BL_PROFILE("Nyx::postCoarseTimeStep: get_all_slice_data");
+
+    if(slice_int != 2) {
       const Real* dx        = geom.CellSize();
 
       MultiFab& S_new = get_new_data(State_Type);
@@ -1610,8 +1651,9 @@ Nyx::postCoarseTimeStep (Real cumtime)
       Real y_coord = (geom.ProbLo()[1] + geom.ProbHi()[1]) / 2 + dx[1]/2;
       Real z_coord = (geom.ProbLo()[2] + geom.ProbHi()[2]) / 2 + dx[2]/2;
 
-      if (ParallelDescriptor::IOProcessor())
+      if (ParallelDescriptor::IOProcessor()) {
          std::cout << "Outputting slices at x = " << x_coord << "; y = " << y_coord << "; z = " << z_coord << std::endl;
+      }
 
       const std::string& slicefilename = amrex::Concatenate(slice_file, nstep);
       UtilCreateCleanDirectory(slicefilename, true);
@@ -1620,35 +1662,98 @@ Nyx::postCoarseTimeStep (Real cumtime)
       amrex::VisMF::SetNOutFiles(slice_nfiles);
 
       // Slice state data
-      std::unique_ptr<MultiFab> x_slice = slice_util::getSliceData(0, S_new,0,S_new.nComp()-2, geom, x_coord);
-      std::unique_ptr<MultiFab> y_slice = slice_util::getSliceData(1, S_new,0,S_new.nComp()-2, geom, y_coord);
-      std::unique_ptr<MultiFab> z_slice = slice_util::getSliceData(2, S_new,0,S_new.nComp()-2, geom, z_coord);
+      std::unique_ptr<MultiFab> x_slice = amrex::get_slice_data(0, x_coord, S_new, geom, 0, S_new.nComp()-2);
+      std::unique_ptr<MultiFab> y_slice = amrex::get_slice_data(1, y_coord, S_new, geom, 0, S_new.nComp()-2);
+      std::unique_ptr<MultiFab> z_slice = amrex::get_slice_data(2, z_coord, S_new, geom, 0, S_new.nComp()-2);
 
       std::string xs = slicefilename + "/State_x";
       std::string ys = slicefilename + "/State_y";
       std::string zs = slicefilename + "/State_z";
 
-      amrex::VisMF::Write(*x_slice, xs);
-      amrex::VisMF::Write(*y_slice, ys);
-      amrex::VisMF::Write(*z_slice, zs);
+      {
+        BL_PROFILE("Nyx::postCoarseTimeStep: writeXSlice");
+        amrex::VisMF::Write(*x_slice, xs);
+      }
+      {
+        BL_PROFILE("Nyx::postCoarseTimeStep: writeYSlice");
+        amrex::VisMF::Write(*y_slice, ys);
+      }
+      {
+        BL_PROFILE("Nyx::postCoarseTimeStep: writeZSlice");
+        amrex::VisMF::Write(*z_slice, zs);
+      }
 
       // Slice diag_eos
-      x_slice = slice_util::getSliceData(0, D_new,0,D_new.nComp(), geom, x_coord);
-      y_slice = slice_util::getSliceData(1, D_new,0,D_new.nComp(), geom, y_coord);
-      z_slice = slice_util::getSliceData(2, D_new,0,D_new.nComp(), geom, z_coord);
+      x_slice = amrex::get_slice_data(0, x_coord, D_new, geom, 0, D_new.nComp());
+      y_slice = amrex::get_slice_data(1, y_coord, D_new, geom, 0, D_new.nComp());
+      z_slice = amrex::get_slice_data(2, z_coord, D_new, geom, 0, D_new.nComp());
 
       xs = slicefilename + "/Diag_x";
       ys = slicefilename + "/Diag_y";
       zs = slicefilename + "/Diag_z";
 
-      amrex::VisMF::Write(*x_slice, xs);
-      amrex::VisMF::Write(*y_slice, ys);
-      amrex::VisMF::Write(*z_slice, zs);
+      {
+        BL_PROFILE("Nyx::postCoarseTimeStep: writeDiagSlices");
+        amrex::VisMF::Write(*x_slice, xs);
+        amrex::VisMF::Write(*y_slice, ys);
+        amrex::VisMF::Write(*z_slice, zs);
+      }
 
       amrex::VisMF::SetNOutFiles(nfiles_current);
 
-      if (ParallelDescriptor::IOProcessor())
+      if (ParallelDescriptor::IOProcessor()) {
          std::cout << "Done with slices." << std::endl;
+      }
+
+
+    } else {
+
+      MultiFab& S_new = get_new_data(State_Type);
+      MultiFab& D_new = get_new_data(DiagEOS_Type);
+
+      const std::string& slicefilename = amrex::Concatenate(slice_file, nstep);
+      UtilCreateCleanDirectory(slicefilename, true);
+
+      int nfiles_current = amrex::VisMF::GetNOutFiles();
+      amrex::VisMF::SetNOutFiles(slice_nfiles);
+
+      int maxBoxSize(64);
+      amrex::Vector<std::string> SMFNames(3);
+      SMFNames[0] = slicefilename + "/State_x";
+      SMFNames[1] = slicefilename + "/State_y";
+      SMFNames[2] = slicefilename + "/State_z";
+      amrex::Vector<std::string> DMFNames(3);
+      DMFNames[0] = slicefilename + "/Diag_x";
+      DMFNames[1] = slicefilename + "/Diag_y";
+      DMFNames[2] = slicefilename + "/Diag_z";
+
+      for(int dir(0); dir < 3; ++dir) {
+        Box sliceBox(geom.Domain());
+        int dir_coord = geom.ProbLo()[dir] + (geom.Domain().length(dir) / 2);
+        amrex::Print() << "Outputting slices at dir_coord[" << dir << "] = " << dir_coord << '\n';
+        sliceBox.setSmall(dir, dir_coord);
+        sliceBox.setBig(dir, dir_coord);
+        BoxArray sliceBA(sliceBox);
+        sliceBA.maxSize(maxBoxSize);
+        DistributionMapping sliceDM(sliceBA);
+
+        MultiFab SSliceMF(sliceBA, sliceDM, S_new.nComp()-2, 0);
+        SSliceMF.copy(S_new, 0, 0, SSliceMF.nComp());
+        amrex::VisMF::Write(SSliceMF, SMFNames[dir]);
+
+        MultiFab DSliceMF(sliceBA, sliceDM, D_new.nComp(), 0);
+        DSliceMF.copy(D_new, 0, 0, DSliceMF.nComp());
+        amrex::VisMF::Write(DSliceMF, DMFNames[dir]);
+      }
+
+      amrex::VisMF::SetNOutFiles(nfiles_current);
+
+      if (ParallelDescriptor::IOProcessor()) {
+         std::cout << "Done with slices." << std::endl;
+      }
+
+    }
+
    }
 }
 
@@ -1664,13 +1769,15 @@ Nyx::post_regrid (int lbase,
 #endif
 
     if (level == lbase) {
-        particle_redistribute(lbase, forceParticleRedist);
+        particle_redistribute(lbase, false);
     }
+
+#ifdef GRAVITY
 
     int which_level_being_advanced = parent->level_being_advanced();
 
-#ifdef GRAVITY
     bool do_grav_solve_here;
+
     if (which_level_being_advanced >= 0)
     {
         do_grav_solve_here = (level == which_level_being_advanced) && (lbase == which_level_being_advanced);
@@ -1689,8 +1796,9 @@ Nyx::post_regrid (int lbase,
         if (gravity->get_gravity_type() == "PoissonGrav")
 #endif
         {
+            int ngrow_for_solve = parent->levelCount(level) + 1;
             int use_previous_phi_as_guess = 1;
-            gravity->multilevel_solve_for_phi(level, new_finest, use_previous_phi_as_guess);
+            gravity->multilevel_solve_for_new_phi(level, new_finest, ngrow_for_solve, use_previous_phi_as_guess);
         }
     }
 #endif
@@ -1740,7 +1848,8 @@ Nyx::post_init (Real stop_time)
             //
             // Solve on full multilevel hierarchy
             //
-            gravity->multilevel_solve_for_phi(0, finest_level);
+            int ngrow_for_solve = 1;
+            gravity->multilevel_solve_for_new_phi(0, finest_level, ngrow_for_solve);
         }
 
         // Make this call just to fill the initial state data.
@@ -2115,77 +2224,42 @@ Nyx::network_init ()
 
 #ifndef NO_HYDRO
 void
-Nyx::reset_internal_energy (MultiFab& S_new, MultiFab& D_new)
+Nyx::reset_internal_energy (MultiFab& S_new, MultiFab& D_new, MultiFab& reset_e_src)
 {
     BL_PROFILE("Nyx::reset_internal_energy()");
     // Synchronize (rho e) and (rho E) so they are consistent with each other
 
     const Real  cur_time = state[State_Type].curTime();
     Real        a        = get_comoving_a(cur_time);
-    const Real* dx       = geom.CellSize();
-    const Real  vol      = D_TERM(dx[0],*dx[1],*dx[2]);
-
-    Real sum_energy_added = 0;
-    Real sum_energy_total = 0;
 
 #ifdef _OPENMP
-#pragma omp parallel reduction(+:sum_energy_added,sum_energy_total)
+#pragma omp parallel
 #endif
     for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
 
-        Real s  = 0;
-        Real se = 0;
         reset_internal_e
-            (BL_TO_FORTRAN(S_new[mfi]), BL_TO_FORTRAN(D_new[mfi]),
-             bx.loVect(), bx.hiVect(),
-             &print_fortran_warnings, &a, &s, &se);
-        sum_energy_added += s;
-        sum_energy_total += se;
-    }
-
-    if (verbose > 1)
-    {
-        Real sums[2] = {sum_energy_added,sum_energy_total};
-
-        const int IOProc = ParallelDescriptor::IOProcessorNumber();
-
-        ParallelDescriptor::ReduceRealSum(sums,2,IOProc);
-
-        if (ParallelDescriptor::IOProcessor())
-        {
-            sum_energy_added = vol*sums[0];
-            sum_energy_total = vol*sums[1];
-
-            if (sum_energy_added > (1.e-12)*sum_energy_total)
-            {
-                std::cout << "Adding to (rho E) "
-                          << sum_energy_added
-                          << " out of total (rho E) "
-                          << sum_energy_total << '\n';
-            }
-        }
+            (bx.loVect(), bx.hiVect(),
+             BL_TO_FORTRAN(S_new[mfi]), BL_TO_FORTRAN(D_new[mfi]),
+	     BL_TO_FORTRAN(reset_e_src[mfi]),
+             &print_fortran_warnings, &a);
     }
 }
 #endif
 
 #ifndef NO_HYDRO
 void
-Nyx::compute_new_temp ()
+Nyx::compute_new_temp (MultiFab& S_new, MultiFab& D_new)
 {
     BL_PROFILE("Nyx::compute_new_temp()");
-    MultiFab& S_new = get_new_data(State_Type);
-    MultiFab& D_new = get_new_data(DiagEOS_Type);
 
-    Real cur_time   = state[State_Type].curTime();
+    Real cur_time  = state[State_Type].curTime();
+    Real a        = get_comoving_a(cur_time);
 
-    reset_internal_energy(S_new,D_new);
-
-    Real a = get_comoving_a(cur_time);
-
-#ifdef HEATCOOL
-    if (heat_cool_type == 1 || heat_cool_type == 3 || heat_cool_type == 5 || heat_cool_type == 7) {
+#ifdef HEATCOOL 
+    if (heat_cool_type == 3 || heat_cool_type == 4 || heat_cool_type == 5 || heat_cool_type == 7 || heat_cool_type == 9 || heat_cool_type == 10 || heat_cool_type == 11)
+    {
        const Real z = 1.0/a - 1.0;
        fort_interp_to_this_z(&z);
     }
@@ -2287,6 +2361,44 @@ Nyx::compute_rho_temp (Real& rho_T_avg, Real& T_avg, Real& Tinv_avg, Real& T_mea
 }
 #endif
 
+#ifndef NO_HYDRO
+void
+Nyx::compute_gas_fractions (Real T_cut, Real rho_cut,
+                            Real& whim_mass_frac, Real& whim_vol_frac,
+                            Real& hh_mass_frac,   Real& hh_vol_frac,
+                            Real& igm_mass_frac,  Real& igm_vol_frac)
+{
+    BL_PROFILE("Nyx::compute_gas_fractions()");
+    MultiFab& S_new = get_new_data(State_Type);
+    MultiFab& D_new = get_new_data(DiagEOS_Type);
+
+    Real whim_mass=0.0, whim_vol=0.0, hh_mass=0.0, hh_vol=0.0, igm_mass=0.0, igm_vol=0.0;
+    Real mass_sum=0.0, vol_sum=0.0;
+
+#ifdef _OPENMP
+#pragma omp parallel reduction(+:whim_mass, whim_vol, hh_mass, hh_vol, igm_mass, igm_vol, mass_sum, vol_sum)
+#endif
+    for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.tilebox();
+
+        fort_compute_gas_frac
+            (bx.loVect(), bx.hiVect(), geom.CellSize(),
+             BL_TO_FORTRAN(S_new[mfi]),
+             BL_TO_FORTRAN(D_new[mfi]), &average_gas_density, &T_cut, &rho_cut,
+             &whim_mass, &whim_vol, &hh_mass, &hh_vol, &igm_mass, &igm_vol, &mass_sum, &vol_sum);
+    }
+    Real sums[8] = {whim_mass, whim_vol, hh_mass, hh_vol, igm_mass, igm_vol, mass_sum, vol_sum};
+    ParallelDescriptor::ReduceRealSum(sums,8);
+
+    whim_mass_frac = sums[0] / sums[6];
+    whim_vol_frac  = sums[1] / sums[7];
+    hh_mass_frac   = sums[2] / sums[6];
+    hh_vol_frac    = sums[3] / sums[7];
+    igm_mass_frac  = sums[4] / sums[6];
+    igm_vol_frac   = sums[5] / sums[7];
+}
+#endif
 
 Real
 Nyx::getCPUTime()
@@ -2304,376 +2416,6 @@ Nyx::getCPUTime()
 }
 
 void
-Nyx::AddProcsToComp(Amr *aptr, int nSidecarProcs, int prevSidecarProcs,
-                    int ioProcNumSCS, int ioProcNumAll, int scsMyId,
-                    MPI_Comm scsComm)
-{
-      BL_PROFILE("Nyx::AddProcsToComp()");
-
-      forceParticleRedist = true;
-
-      AmrLevel::AddProcsToComp(aptr, nSidecarProcs, prevSidecarProcs,
-                               ioProcNumSCS, ioProcNumAll, scsMyId,
-                               scsComm);
-
-
-      // ---- pack up the bools
-      Vector<int> allBools;  // ---- just use ints here
-      if(scsMyId == ioProcNumSCS) {
-        allBools.push_back(dump_old);
-        allBools.push_back(do_dm_particles);
-        allBools.push_back(particle_initrandom_serialize);
-        allBools.push_back(FillPatchedOldState_ok);
-      }
-
-      amrex::BroadcastArray(allBools, scsMyId, ioProcNumAll, scsComm);
-
-      // ---- unpack the bools
-      if(scsMyId != ioProcNumSCS) {
-        int count(0);
-        dump_old = allBools[count++];
-        do_dm_particles = allBools[count++];
-        particle_initrandom_serialize = allBools[count++];
-        FillPatchedOldState_ok = allBools[count++];
-        BL_ASSERT(count == allBools.size());
-      }
-
-
-      // ---- pack up the ints
-      Vector<int> allInts;
-
-      if(scsMyId == ioProcNumSCS) {
-        allInts.push_back(write_parameters_in_plotfile);
-        allInts.push_back(print_fortran_warnings);
-        allInts.push_back(particle_verbose);
-        allInts.push_back(write_particle_density_at_init);
-        allInts.push_back(write_coarsened_particles);
-        allInts.push_back(NUM_STATE);
-        allInts.push_back(Density);
-        allInts.push_back(Xmom);
-        allInts.push_back(Ymom);
-        allInts.push_back(Zmom);
-        allInts.push_back(Eden);
-        allInts.push_back(Eint);
-        allInts.push_back(Temp_comp);
-        allInts.push_back(Ne_comp);
-        allInts.push_back(Zhi_comp);
-        allInts.push_back(FirstSpec);
-        allInts.push_back(FirstAux);
-        allInts.push_back(FirstAdv);
-        allInts.push_back(NumSpec);
-        allInts.push_back(NumAux);
-        allInts.push_back(NumAdv);
-        allInts.push_back(strict_subcycling);
-        allInts.push_back(init_with_sph_particles);
-        allInts.push_back(verbose);
-        allInts.push_back(do_reflux);
-        allInts.push_back(NUM_GROW);
-        allInts.push_back(nsteps_from_plotfile);
-        allInts.push_back(allow_untagging);
-        allInts.push_back(use_const_species);
-        allInts.push_back(normalize_species);
-        allInts.push_back(do_special_tagging);
-        allInts.push_back(ppm_type);
-        allInts.push_back(ppm_reference);
-        allInts.push_back(ppm_flatten_before_integrals);
-        allInts.push_back(use_colglaz);
-        allInts.push_back(use_flattening);
-        allInts.push_back(corner_coupling);
-        allInts.push_back(version_2);
-        allInts.push_back(use_exact_gravity);
-        allInts.push_back(particle_initrandom_iseed);
-        allInts.push_back(do_hydro);
-        allInts.push_back(do_grav);
-        allInts.push_back(add_ext_src);
-        allInts.push_back(heat_cool_type);
-        allInts.push_back(inhomo_reion);
-        allInts.push_back(strang_split);
-        allInts.push_back(reeber_int);
-        allInts.push_back(gimlet_int);
-        allInts.push_back(forceParticleRedist);
-      }
-
-      amrex::BroadcastArray(allInts, scsMyId, ioProcNumAll, scsComm);
-
-      // ---- unpack the ints
-      if(scsMyId != ioProcNumSCS) {
-        int count(0);
-
-        write_parameters_in_plotfile = allInts[count++];
-        print_fortran_warnings = allInts[count++];
-        particle_verbose = allInts[count++];
-        write_particle_density_at_init = allInts[count++];
-        write_coarsened_particles = allInts[count++];
-        NUM_STATE = allInts[count++];
-        Density = allInts[count++];
-        Xmom = allInts[count++];
-        Ymom = allInts[count++];
-        Zmom = allInts[count++];
-        Eden = allInts[count++];
-        Eint = allInts[count++];
-        Temp_comp = allInts[count++];
-        Ne_comp = allInts[count++];
-        Zhi_comp = allInts[count++];
-        FirstSpec = allInts[count++];
-        FirstAux = allInts[count++];
-        FirstAdv = allInts[count++];
-        NumSpec = allInts[count++];
-        NumAux = allInts[count++];
-        NumAdv = allInts[count++];
-        strict_subcycling = allInts[count++];
-        init_with_sph_particles = allInts[count++];
-        verbose = allInts[count++];
-        do_reflux = allInts[count++];
-        NUM_GROW = allInts[count++];
-        nsteps_from_plotfile = allInts[count++];
-        allow_untagging = allInts[count++];
-        use_const_species = allInts[count++];
-        normalize_species = allInts[count++];
-        do_special_tagging = allInts[count++];
-        ppm_type = allInts[count++];
-        ppm_reference = allInts[count++];
-        ppm_flatten_before_integrals = allInts[count++];
-        use_colglaz = allInts[count++];
-        use_flattening = allInts[count++];
-        corner_coupling = allInts[count++];
-        version_2 = allInts[count++];
-        use_exact_gravity = allInts[count++];
-        particle_initrandom_iseed = allInts[count++];
-        do_hydro = allInts[count++];
-        do_grav = allInts[count++];
-        add_ext_src = allInts[count++];
-        heat_cool_type = allInts[count++];
-        inhomo_reion = allInts[count++];
-        strang_split = allInts[count++];
-        reeber_int = allInts[count++];
-        gimlet_int = allInts[count++];
-        forceParticleRedist = allInts[count++];
-
-        BL_ASSERT(count == allInts.size());
-      }
-
-
-      // ---- longs
-      ParallelDescriptor::Bcast(&particle_initrandom_count, 1, ioProcNumAll, scsComm);
-
-
-      // ---- pack up the Reals
-      Vector<Real> allReals;
-      if(scsMyId == ioProcNumSCS) {
-        allReals.push_back(initial_z);
-        allReals.push_back(final_a);
-        allReals.push_back(final_z);
-        allReals.push_back(relative_max_change_a);
-        allReals.push_back(old_a_time);
-        allReals.push_back(new_a_time);
-        allReals.push_back(old_a);
-        allReals.push_back(new_a);
-        allReals.push_back(particle_cfl);
-        allReals.push_back(cfl);
-        allReals.push_back(init_shrink);
-        allReals.push_back(change_max);
-        allReals.push_back(small_dens);
-        allReals.push_back(small_temp);
-        allReals.push_back(gamma);
-        allReals.push_back( h_species);
-        allReals.push_back(he_species);
-        allReals.push_back(particle_initrandom_mass);
-        allReals.push_back(average_gas_density);
-        allReals.push_back(average_dm_density);
-        allReals.push_back(average_neutr_density);
-        allReals.push_back(average_total_density);
-        allReals.push_back(comoving_OmB);
-        allReals.push_back(comoving_OmM);
-        allReals.push_back(comoving_h);
-#ifdef NEUTRINO_PARTICLES
-        allReals.push_back(neutrino_cfl);
-#endif
-#ifdef AGN
-        allReals.push_back(mass_halo_min);
-        allReals.push_back(mass_seed);
-#endif        
-      }
-
-      amrex::BroadcastArray(allReals, scsMyId, ioProcNumAll, scsComm);
-      amrex::BroadcastArray(plot_z_values, scsMyId, ioProcNumAll, scsComm);
-      amrex::BroadcastArray(analysis_z_values, scsMyId, ioProcNumAll, scsComm);
-
-      // ---- unpack the Reals
-      if(scsMyId != ioProcNumSCS) {
-        int count(0);
-        initial_z = allReals[count++];
-        final_a = allReals[count++];
-        final_z = allReals[count++];
-        relative_max_change_a = allReals[count++];
-        old_a_time = allReals[count++];
-        new_a_time = allReals[count++];
-        old_a = allReals[count++];
-        new_a = allReals[count++];
-        particle_cfl = allReals[count++];
-        cfl = allReals[count++];
-        init_shrink = allReals[count++];
-        change_max = allReals[count++];
-        small_dens = allReals[count++];
-        small_temp = allReals[count++];
-        gamma = allReals[count++];
-         h_species = allReals[count++];
-        he_species = allReals[count++];
-        particle_initrandom_mass = allReals[count++];
-        average_gas_density = allReals[count++];
-        average_dm_density = allReals[count++];
-        average_neutr_density = allReals[count++];
-        average_total_density = allReals[count++];
-        comoving_OmB = allReals[count++];
-        comoving_OmM = allReals[count++];
-        comoving_h = allReals[count++];
-#ifdef NEUTRINO_PARTICLES
-        neutrino_cfl = allReals[count++];
-#endif
-#ifdef AGN
-        mass_halo_min = allReals[count++];
-        mass_seed = allReals[count++];
-#endif        
-        BL_ASSERT(count == allReals.size());
-      }
-
-
-      // ---- pack up the strings
-      Vector<std::string> allStrings;
-      Vector<char> serialStrings;
-      if(scsMyId == ioProcNumSCS) {
-        allStrings.push_back(particle_plotfile_format);
-        allStrings.push_back(particle_init_type);
-        allStrings.push_back(particle_move_type);
-
-        serialStrings = amrex::SerializeStringArray(allStrings);
-      }
-
-      amrex::BroadcastArray(serialStrings, scsMyId, ioProcNumAll, scsComm);
-
-      // ---- unpack the strings
-      if(scsMyId != ioProcNumSCS) {
-        int count(0);
-        allStrings = amrex::UnSerializeStringArray(serialStrings);
-
-        particle_plotfile_format = allStrings[count++];
-        particle_init_type = allStrings[count++];
-        particle_move_type = allStrings[count++];
-      }
-
-
-      // ---- maps
-      std::cout << "_in AddProcsToComp:  fix maps." << std::endl;
-      //std::map<std::string,MultiFab*> auxDiag;
-      //static std::map<std::string,Vector<std::string> > auxDiag_names;
-
-
-      // ---- pack up the IntVects
-      Vector<int> allIntVects;
-      if(scsMyId == ioProcNumSCS) {
-        for(int i(0); i < BL_SPACEDIM; ++i)    { allIntVects.push_back(Nrep[i]); }
-
-        BL_ASSERT(allIntVects.size() == BL_SPACEDIM);
-      }
-
-      amrex::BroadcastArray(allIntVects, scsMyId, ioProcNumAll, scsComm);
-
-      // ---- unpack the IntVects
-      if(scsMyId != ioProcNumSCS) {
-          int count(0);
-
-          BL_ASSERT(allIntVects.size() == BL_SPACEDIM);
-          for(int i(0); i < BL_SPACEDIM; ++i)    { Nrep[i] = allIntVects[count++]; }
-
-          BL_ASSERT(allIntVects.size() == BL_SPACEDIM);
-      }
-
-
-
-      // ---- BCRec
-      Vector<int> bcrLo(BL_SPACEDIM), bcrHi(BL_SPACEDIM);
-      if(scsMyId == ioProcNumSCS) {
-        for(int i(0); i < bcrLo.size(); ++i) { bcrLo[i] = phys_bc.lo(i); }
-        for(int i(0); i < bcrHi.size(); ++i) { bcrHi[i] = phys_bc.hi(i); }
-      }
-      ParallelDescriptor::Bcast(bcrLo.dataPtr(), bcrLo.size(), ioProcNumSCS, scsComm);
-      ParallelDescriptor::Bcast(bcrHi.dataPtr(), bcrHi.size(), ioProcNumSCS, scsComm);
-      if(scsMyId != ioProcNumSCS) {
-        for(int i(0); i < bcrLo.size(); ++i) { phys_bc.setLo(i, bcrLo[i]); }
-        for(int i(0); i < bcrHi.size(); ++i) { phys_bc.setHi(i, bcrHi[i]); }
-      }
-
-
-
-
-      // ---- ErrorList
-      if(scsMyId != ioProcNumSCS) {
-        InitErrorList();
-      }
-
-      // ---- DeriveList
-      if(scsMyId != ioProcNumSCS) {
-        InitDeriveList();
-      }
-
-      int isAllocated(0);
-#ifndef NO_HYDRO
-      // ---- FluxRegister
-      if(scsMyId == ioProcNumSCS) {
-        if(flux_reg == 0) {
-          isAllocated = 0;
-        } else {
-          isAllocated = 1;
-        }
-      }
-      ParallelDescriptor::Bcast(&isAllocated, 1, ioProcNumSCS, scsComm);
-      if(isAllocated == 1) {
-        if(scsMyId != ioProcNumSCS) {
-          BL_ASSERT(flux_reg == 0);
-          flux_reg = new FluxRegister;
-        }
-        flux_reg->AddProcsToComp(ioProcNumSCS, ioProcNumAll, scsMyId, scsComm);
-      }
-#endif
-
-
-      // ---- fine_mask
-      isAllocated = 0;
-      if(scsMyId == ioProcNumSCS) {
-        if(fine_mask == 0) {
-          isAllocated = 0;
-        } else {
-          isAllocated = 1;
-        }
-      }
-      ParallelDescriptor::Bcast(&isAllocated, 1, ioProcNumSCS, scsComm);
-      if(isAllocated == 1) {
-        if(scsMyId != ioProcNumSCS) {
-          BL_ASSERT(fine_mask == 0);
-          std::cout << "**** check fine_mask." << std::endl;
-          fine_mask = build_fine_mask();
-        }
-        fine_mask->AddProcsToComp(ioProcNumSCS, ioProcNumAll, scsMyId, scsComm);
-      }
-
-
-#ifdef GRAVITY
-      // ---- gravity
-      if(do_grav) {
-        if(gravity != 0) {
-          gravity->AddProcsToComp(parent, level, this, ioProcNumSCS, ioProcNumAll, scsMyId, scsComm);
-	}
-   }
-#endif
-
-
-       NyxParticlesAddProcsToComp(parent, nSidecarProcs, prevSidecarProcs, ioProcNumSCS,
-                                  ioProcNumAll, scsMyId, scsComm);
-
-}
-
-
-void
 Nyx::InitErrorList() {
     //err_list.clear(true);
     //err_list.add("FULLSTATE",1,ErrorRec::Special,FORT_DENERROR);
@@ -2685,3 +2427,75 @@ Nyx::InitErrorList() {
 void
 Nyx::InitDeriveList() {
 }
+
+
+void
+Nyx::LevelDirectoryNames(const std::string &dir,
+                         const std::string &secondDir,
+                         std::string &LevelDir,
+                         std::string &FullPath)
+{
+    LevelDir = amrex::Concatenate("Level_", level, 1);
+    //
+    // Now for the full pathname of that directory.
+    //
+    FullPath = dir;
+    if( ! FullPath.empty() && FullPath.back() != '/') {
+        FullPath += '/';
+    }
+    FullPath += secondDir;
+    FullPath += "/";
+    FullPath += LevelDir;
+}
+
+
+void
+Nyx::CreateLevelDirectory (const std::string &dir)
+{
+    AmrLevel::CreateLevelDirectory(dir);  // ---- this sets levelDirectoryCreated = true
+
+    std::string dm(dir + "/" + Nyx::retrieveDM());
+    if(ParallelDescriptor::IOProcessor()) {
+      if( ! amrex::UtilCreateDirectory(dm, 0755)) {
+        amrex::CreateDirectoryFailed(dm);
+      }
+    }
+
+    std::string LevelDir, FullPath;
+    LevelDirectoryNames(dir, Nyx::retrieveDM(), LevelDir, FullPath);
+    if(ParallelDescriptor::IOProcessor()) {
+      if( ! amrex::UtilCreateDirectory(FullPath, 0755)) {
+        amrex::CreateDirectoryFailed(FullPath);
+      }
+    }
+
+#ifdef AGN
+    std::string agn(dir + "/" + Nyx::retrieveAGN());
+    if(ParallelDescriptor::IOProcessor()) {
+      if( ! amrex::UtilCreateDirectory(agn, 0755)) {
+        amrex::CreateDirectoryFailed(agn);
+      }
+    }
+
+    LevelDirectoryNames(dir, Nyx::retrieveAGN(), LevelDir, FullPath);
+    if(ParallelDescriptor::IOProcessor()) {
+      if( ! amrex::UtilCreateDirectory(FullPath, 0755)) {
+        amrex::CreateDirectoryFailed(FullPath);
+      }
+    }
+#endif
+
+    if(parent->UsingPrecreateDirectories()) {
+      if(Nyx::theDMPC()) {
+        Nyx::theDMPC()->SetLevelDirectoriesCreated(true);
+      }
+#ifdef AGN
+      if(Nyx::theAPC()) {
+        Nyx::theAPC()->SetLevelDirectoriesCreated(true);
+      }
+#endif
+    }
+
+}
+
+

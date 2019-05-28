@@ -4,7 +4,6 @@
       use amrex_fort_module, only : rt => amrex_real
       use probdata_module
       use turbinit_module
-      use network, only : network_init
 
       implicit none
       integer init, namlen
@@ -93,7 +92,7 @@
 
       use probdata_module
       use turbforce_module
-      use bl_constants_module, only : TWO, ONE, HALF, ZERO, M_PI
+      use amrex_constants_module, only : TWO, ONE, HALF, ZERO, M_PI
       use atomic_rates_module, only: XHYDROGEN
       use meth_params_module, only : URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, TEMP_COMP, NE_COMP, &
 	                             small_dens, small_temp, small_pres

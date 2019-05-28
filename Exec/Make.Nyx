@@ -1,4 +1,4 @@
-EBASE     = Nyx
+EBASE     ?= Nyx
 
 USE_PARTICLES = TRUE
 
@@ -11,6 +11,21 @@ DEFINES += -DCRSEGRNDOMP
 
 ifeq ($(USE_SINGLE_PRECISION_PARTICLES), TRUE)
   DEFINES += -DBL_SINGLE_PRECISION_PARTICLES
+endif
+
+HENSON_INCLUDE_DIR ?= $(HOME)/Research/Sensei/henson-chai/include
+HENSON_LIBRARY_DIR ?= $(HOME)/Build/Sensei/henson-chai
+HENSON_LIBRARY ?= -L$(HENSON_LIBRARY_DIR) -lhenson
+HENSON_LIBPMPI ?= -L$(HENSON_LIBRARY_DIR) -lhenson-pmpi -Wl,-rpath $(HENSON_LIBRARY_DIR)
+ifeq ($(USE_HENSON), TRUE)
+  DEFINES += -DHENSON
+  FFLAGS += -fPIC
+  F90FLAGS += -fPIC
+  CXXFLAGS += -fPIC
+  CFLAGS += -fPIC
+  LDFLAGS += -shared -Wl,--export-dynamic -Wl,-u,henson_set_contexts,-u,henson_set_namemap
+  INCLUDE_LOCATIONS += $(HENSON_INCLUDE_DIR)
+  LIBRARIES += $(HENSON_LIBRARY) $(HENSON_LIBPMPI)
 endif
 
 ifeq ($(USE_GRAV), TRUE)
@@ -31,6 +46,10 @@ endif
 
 ifeq ($(USE_HEATCOOL), TRUE)
   DEFINES += -DHEATCOOL
+endif
+
+ifeq ($(USE_SDC), TRUE)
+  DEFINES += -DSDC
 endif
 
 ifeq ($(USE_FORCING), TRUE)
@@ -107,12 +126,9 @@ include $(Bpack)
 INCLUDE_LOCATIONS += $(Blocs)
 VPATH_LOCATIONS   += $(Blocs)
 
-#INCLUDE_LOCATIONS += $(TOP)/Source/MG
-#VPATH_LOCATIONS   += $(TOP)/Source/MG
-
 #These are the directories in AMReX
 
-Pdirs   := Base AmrCore Amr Boundary Particle Extern/amrdata 
+Pdirs   := Base AmrCore Amr Boundary Particle Extern/amrdata # F_Interfaces/Base
 Ppack	+= $(foreach dir, $(Pdirs), $(AMREX_HOME)/Src/$(dir)/Make.package)
 Plocs	+= $(foreach dir, $(Pdirs), $(AMREX_HOME)/Src/$(dir))
 
@@ -128,34 +144,21 @@ USE_MG = FALSE
 ifeq ($(USE_GRAV), TRUE)
   USE_MG = TRUE
 endif
-   
-ifeq ($(USE_MG), TRUE)
-  include $(AMREX_HOME)/Src/LinearSolvers/C_to_F_MG/Make.package
-  INCLUDE_LOCATIONS += $(AMREX_HOME)/Src/LinearSolvers/C_to_F_MG
-  VPATH_LOCATIONS   += $(AMREX_HOME)/Src/LinearSolvers/C_to_F_MG
 
+ifeq ($(USE_MG), TRUE)
   include $(AMREX_HOME)/Src/LinearSolvers/C_CellMG/Make.package
   INCLUDE_LOCATIONS += $(AMREX_HOME)/Src/LinearSolvers/C_CellMG
   VPATH_LOCATIONS   += $(AMREX_HOME)/Src/LinearSolvers/C_CellMG
 
-  include $(AMREX_HOME)/Src/LinearSolvers/F_MG/FParallelMG.mak
-  INCLUDE_LOCATIONS += $(AMREX_HOME)/Src/LinearSolvers/F_MG
-  VPATH_LOCATIONS   += $(AMREX_HOME)/Src/LinearSolvers/F_MG
+  include $(AMREX_HOME)/Src/LinearSolvers/MLMG/Make.package
+  INCLUDE_LOCATIONS += $(AMREX_HOME)/Src/LinearSolvers/MLMG
+  VPATH_LOCATIONS   += $(AMREX_HOME)/Src/LinearSolvers/MLMG
 endif
 
-ifeq ($(USE_HPGMG), TRUE)
-   HPGMG_F_CYCLES = 20
-   HPGMG_V_CYCLES = 0
-   HPGMG_HELMHOLTZ = FALSE
-   HPGMG_STENCIL_VARIABLE_COEFFICIENT = FALSE
-   HPGMG_USE_SUBCOMM = TRUE
-   HPGMG_BOTTOM_SOLVER= CG
-   HPGMG_SMOOTHER = GSRB
-endif
-
-include $(AMREX_HOME)/Src/F_BaseLib/FParallelMG.mak
-INCLUDE_LOCATIONS += $(AMREX_HOME)/Src/F_BaseLib
-VPATH_LOCATIONS   += $(AMREX_HOME)/Src/F_BaseLib
+#INCLUDE_LOCATIONS += $(AMREX_HOME)/Src/F_Interfaces
+#VPATH_LOCATIONS   += $(AMREX_HOME)/Src/F_Interfaces
+#INCLUDE_LOCATIONS += $(AMREX_HOME)/Src/F_Interfaces/Base
+#VPATH_LOCATIONS   += $(AMREX_HOME)/Src/F_Interfaces/Base
 
 VODE_dir    := $(TOP)/Util/VODE
 include $(VODE_dir)/Make.package

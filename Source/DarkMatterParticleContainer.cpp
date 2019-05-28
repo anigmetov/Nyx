@@ -158,8 +158,11 @@ DarkMatterParticleContainer::moveKickDrift (amrex::MultiFab&       acceleration,
                         p.id() = -1;
                     }
                     else
-                    {
-                        std::cout << "Oops -- removing particle " << p.id() << std::endl;
+                    {       
+                        int grid = kv.first.first;
+                        
+                        
+                        std::cout << "Oops -- removing particle " << p << " " << this->Index(p, lev) << " " << lev << " " << (this->m_gdb->ParticleBoxArray(lev))[grid] << " " << where_width << std::endl;
                         amrex::Error("Trying to get rid of a non-ghost particle in moveKickDrift");
                     }
                 }
@@ -725,7 +728,7 @@ DarkMatterParticleContainer::InitFromBinaryMortonFile(const std::string& particl
     file_indices[box_morton_keys[i].box_id] = i;
   
   ParticleType p;
-  for (MFIter mfi = MakeMFIter(lev); mfi.isValid(); ++mfi) {
+  for (MFIter mfi = MakeMFIter(lev, false); mfi.isValid(); ++mfi) {  // no tiling
     Box tile_box = mfi.tilebox();      
     const int grid = mfi.index();
     const int tile = mfi.LocalTileIndex();      
