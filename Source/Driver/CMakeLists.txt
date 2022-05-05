@@ -1,6 +1,11 @@
 target_include_directories(nyxcore
    PUBLIC
-   $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}> )
+   $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
+   ${LOW_FIVE_DIR}/include
+   ${LOW_FIVE_DIR}/ext/fmt/include
+   ${LOW_FIVE_DIR}/ext/diy/include
+   )
+
 
 target_sources( nyxcore
    PRIVATE

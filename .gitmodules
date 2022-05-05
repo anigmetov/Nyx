@@ -1,6 +1,8 @@
 [submodule "subprojects/amrex"]
 	path = subprojects/amrex
-	url = https://github.com/AMReX-Codes/amrex.git
+	url = https://github.com/houjun/amrex.git
 [submodule "subprojects/sundials"]
 	path = subprojects/sundials
 	url = https://github.com/LLNL/sundials.git
+[submodule ".git/modules/subprojects/amrex"]
+	url = https://github.com/houjun/amrex/tree/development

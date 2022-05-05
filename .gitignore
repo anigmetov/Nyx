@@ -68,3 +68,5 @@ junk
 
 ChangeLog.Nyx
 git.*
+.idea/
+*build*/

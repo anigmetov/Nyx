@@ -215,6 +215,7 @@ Nyx::writePlotFile (const std::string& dir,
     //
     // Cull data from state variables -- use no ghost cells.
     //
+    std::cerr << "HERE: plt_var_map.size = " << plot_var_map.size() << std::endl;
     for (i = 0; i < plot_var_map.size(); i++)
     {
         int typ = plot_var_map[i].first;
@@ -224,10 +225,13 @@ Nyx::writePlotFile (const std::string& dir,
         MultiFab::Copy(plotMF, *this_dat, comp, cnt, 1, nGrow);
         cnt++;
     }
+
+    for(auto s : varnames)
+        std::cerr << "HERE: varmanmes[i] = " << s << std::endl;
     //
     // Cull data from derived variables.
     //
-    if (derive_names.size() > 0)
+    if (derive_names.size() > 0 and false)
     {
       for (std::list<DeriveRec>::const_iterator it = derive_lst.dlist().begin();
            it != derive_lst.dlist().end(); ++it)
@@ -239,9 +243,10 @@ Nyx::writePlotFile (const std::string& dir,
         }
     }
 
-    WriteSingleLevelPlotfileHDF5(dir_final,
+    WriteSingleLevelPlotfileHDF5MD(dir_final,
                           plotMF, varnames,
                           Geom(), cur_time, nStep());
+    std::cerr << "HERE plotfile OK" << std::endl;
 //                          const std::string &versionName,
 //                          const std::string &levelPrefix,
 //                          const std::string &mfPrefix,

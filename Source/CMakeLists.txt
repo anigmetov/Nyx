@@ -80,6 +80,14 @@ if (Nyx_SUNDIALS)
 endif ()
 
 
+target_link_libraries(nyxcore PUBLIC ${LOW_FIVE_BUILD_DIR}/src/liblowfive.so ${LOW_FIVE_BUILD_DIR}/src/liblowfive-dist.a)
+set_target_properties(nyxcore PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+target_include_directories(nyxcore PRIVATE  ${LOW_FIVE_DIR}/include
+        ${LOW_FIVE_DIR}/ext/fmt/include
+        ${LOW_FIVE_DIR}/ext/spdlog/include
+        ${LOW_FIVE_DIR}/ext/diy/include )
+target_link_libraries(nyxcore PUBLIC ${LOW_FIVE_BUILD_DIR}/src/liblowfive.so ${LOW_FIVE_BUILD_DIR}/src/liblowfive-dist.a)
 ##############################################################################
 #                                                                            #
 #                               Nyx sources                                  #
