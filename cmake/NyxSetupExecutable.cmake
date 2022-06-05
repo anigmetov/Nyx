@@ -67,25 +67,27 @@ macro (nyx_setup_executable _srcs _inputs)
       file( COPY ${${_inputs}} DESTINATION ${_exe_dir} )
    endif ()
 
-   # Add shared library with same function for LyA only, to test lowfive
+   # Add shared library with same function for LyA only, to test lowfive with henson
    if (${_exe_name} STREQUAL "nyx_LyA")
 
-      set( _lib_name  "${_base_name}_for_lowfive" )
+      set( _lib_name  "henson_${_base_name}" )
 
       add_library( ${_lib_name} SHARED)
+      set_target_properties(${_lib_name} PROPERTIES PREFIX "")
+      set_target_properties(${_lib_name} PROPERTIES SUFFIX ".hx")
+
       target_sources( ${_lib_name} PRIVATE ${${_srcs}} )
       target_sources( ${_lib_name} PRIVATE ${NYX_DEFAULT_MAIN} )
 
+      target_link_libraries(${_lib_name} ${HENSON_BUILD_DIR}/libhenson-pmpi.so)
+      target_link_libraries(${_lib_name} ${HENSON_BUILD_DIR}/libhenson.a)
       target_link_libraries(${_lib_name} nyxcore)
 
       set_target_properties(${_lib_name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${_exe_dir} )
-      set_target_properties(${_lib_name} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
       if (_EXTRA_DEFINITIONS)
          target_compile_definitions(${_lib_name} PRIVATE ${_EXTRA_DEFINITIONS})
       endif ()
-
-      target_compile_definitions(${_lib_name} PRIVATE EXCLUDE_MAIN_FOR_LOWFIVE)
 
       # Find out which include directory is needed
       set(_includes ${${_srcs}})
@@ -98,10 +100,9 @@ macro (nyx_setup_executable _srcs _inputs)
          target_include_directories( ${_lib_name} PRIVATE  ${_include_dir} )
       endforeach()
 
-      target_include_directories( ${_lib_name} PRIVATE  ${LOW_FIVE_DIR}/include
-                                                        ${LOW_FIVE_DIR}/ext/fmt/include
-                                                        ${LOW_FIVE_DIR}/ext/spdlog/include
-                                                        ${LOW_FIVE_DIR}/ext/diy/include )
-      target_link_libraries( ${_lib_name} ${LOW_FIVE_BUILD_DIR}/src/liblowfive.so ${LOW_FIVE_BUILD_DIR}/src/liblowfive-dist.a)
+      # Henson-specific
+      set(linker_flags "-Wl,--export-dynamic")
+      set(linker_flags "${linker_flags} -Wl,-u,henson_set_contexts,-u,henson_set_namemap")
+      set_target_properties(${_lib_name} PROPERTIES LINK_FLAGS ${linker_flags})
    endif()
 endmacro ()

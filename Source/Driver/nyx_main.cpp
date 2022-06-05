@@ -66,11 +66,6 @@ fail_on_hdf5_error(hid_t stack_id, void*)
 void
 nyx_main (int argc, char* argv[])
 {
-
-    LowFive::MetadataVOL vol;
-    LowFive::LocationPattern loc_pat { "*", "*" };
-    vol.memory.push_back(loc_pat);
-
     amrex::Initialize(argc, argv);
     {
 

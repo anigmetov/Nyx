@@ -215,7 +215,6 @@ Nyx::writePlotFile (const std::string& dir,
     //
     // Cull data from state variables -- use no ghost cells.
     //
-    std::cerr << "HERE: plt_var_map.size = " << plot_var_map.size() << std::endl;
     for (i = 0; i < plot_var_map.size(); i++)
     {
         int typ = plot_var_map[i].first;
@@ -226,12 +225,18 @@ Nyx::writePlotFile (const std::string& dir,
         cnt++;
     }
 
-    for(auto s : varnames)
-        std::cerr << "HERE: varmanmes[i] = " << s << std::endl;
+    std::cerr << "HERE: amrex::Real is " << ((sizeof(amrex::Real) == sizeof(double)) ? "double" : "float") << std::endl;
+    for (i = 0; i < plot_var_map.size(); i++)
+    {
+        auto local_sum = plotMF.sum(plot_var_map[i].second, true);
+        auto global_sum = plotMF.sum(plot_var_map[i].second, false);
+        std::cerr << "HERE: varnames[i] = " << varnames[i] << ", global sum = " << global_sum << ", local sum = " << local_sum << std::endl;
+    }
+
     //
     // Cull data from derived variables.
     //
-    if (derive_names.size() > 0 and false)
+    if (derive_names.size() > 0)
     {
       for (std::list<DeriveRec>::const_iterator it = derive_lst.dlist().begin();
            it != derive_lst.dlist().end(); ++it)
@@ -246,7 +251,6 @@ Nyx::writePlotFile (const std::string& dir,
     WriteSingleLevelPlotfileHDF5MD(dir_final,
                           plotMF, varnames,
                           Geom(), cur_time, nStep());
-    std::cerr << "HERE plotfile OK" << std::endl;
 //                          const std::string &versionName,
 //                          const std::string &levelPrefix,
 //                          const std::string &mfPrefix,
