@@ -55,9 +55,9 @@ macro (nyx_setup_executable _srcs _inputs)
       target_include_directories( ${_exe_name} PRIVATE  ${_include_dir} )
    endforeach()
 
-   target_include_directories( ${_exe_name} PRIVATE  ${LOW_FIVE_DIR}/include ${LOW_FIVE_DIR}/ext/fmt/include ${LOW_FIVE_DIR}/ext/diy/include )
-   target_link_libraries( ${_exe_name} ${LOW_FIVE_BUILD_DIR}/src/liblowfive.so
-                                               ${LOW_FIVE_BUILD_DIR}/src/liblowfive-dist.a)
+   #target_include_directories( ${_exe_name} PRIVATE  ${LOW_FIVE_DIR}/include ${LOW_FIVE_DIR}/ext/fmt/include ${LOW_FIVE_DIR}/ext/diy/include )
+   #target_link_libraries( ${_exe_name} ${LOW_FIVE_BUILD_DIR}/src/liblowfive.so
+   #                                            ${LOW_FIVE_BUILD_DIR}/src/liblowfive-dist.a)
 
    if (Nyx_GPU_BACKEND STREQUAL "CUDA")
       setup_target_for_cuda_compilation( ${_exe_name} )

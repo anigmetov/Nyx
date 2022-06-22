@@ -26,9 +26,9 @@
 #endif
 
 
-#include <lowfive/vol-base.hpp>
-#include <lowfive/vol-metadata.hpp>
-#include <lowfive/vol-dist-metadata.hpp>
+//#include <lowfive/vol-base.hpp>
+//#include <lowfive/vol-metadata.hpp>
+//#include <lowfive/vol-dist-metadata.hpp>
 
 #include <Nyx_output.H>
 
@@ -55,13 +55,13 @@ const int quitSignal(-44);
 
 amrex::LevelBld* getLevelBld ();
 
-herr_t
-fail_on_hdf5_error(hid_t stack_id, void*)
-{
-    H5Eprint(stack_id, stderr);
-    fprintf(stderr, "An HDF5 error was detected. Terminating.\n");
-    exit(1);
-}
+//herr_t
+//fail_on_hdf5_error(hid_t stack_id, void*)
+//{
+//    H5Eprint(stack_id, stderr);
+//    fprintf(stderr, "An HDF5 error was detected. Terminating.\n");
+//    exit(1);
+//}
 
 void
 nyx_main (int argc, char* argv[])
@@ -203,17 +203,17 @@ extern "C" void
 producer_f(int argc, char** argv, MPI_Comm& comm, MPI_Comm& intercomm)
 {
 
-    LowFive::LocationPattern all {"*", "*"};
-//    LowFive::LocationPattern only_one {"plt00002.h5", "*"};
-    H5Eset_auto(H5E_DEFAULT, fail_on_hdf5_error, NULL);
-    LowFive::DistMetadataVOL vol(comm, intercomm);
-    vol.set_intercomm("*", "*", 0);
-    vol.set_memory("*", "*");
-    vol.set_keep(true);
+//    LowFive::LocationPattern all {"*", "*"};
+////    LowFive::LocationPattern only_one {"plt00002.h5", "*"};
+//    H5Eset_auto(H5E_DEFAULT, fail_on_hdf5_error, NULL);
+//    LowFive::DistMetadataVOL vol(comm, intercomm);
+//    vol.set_intercomm("*", "*", 0);
+//    vol.set_memory("*", "*");
+//    vol.set_keep(true);
 
-    int loc_size;
-    MPI_Comm_size(comm, &loc_size);
-    std::cerr << "In producer_f local size= " << loc_size << std::endl;
+    //int loc_size;
+    //MPI_Comm_size(comm, &loc_size);
+    //std::cerr << "In producer_f local size= " << loc_size << std::endl;
 
     amrex::Initialize(argc, argv, true, comm);
     {
