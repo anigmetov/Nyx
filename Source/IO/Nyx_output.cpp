@@ -155,7 +155,7 @@ Nyx::writePlotFile (const std::string& dir,
             if (it->name() == "particle_count" ||
                 it->name() == "total_particle_count" ||
                 it->name() == "particle_mass_density" ||
-                it->name() == "total_density" || 
+                it->name() == "total_density" ||
                 it->name() == "particle_x_velocity" ||
                 it->name() == "particle_y_velocity" ||
                 it->name() == "particle_z_velocity" )
@@ -225,12 +225,12 @@ Nyx::writePlotFile (const std::string& dir,
         cnt++;
     }
 
-    std::cerr << "HERE: amrex::Real is " << ((sizeof(amrex::Real) == sizeof(double)) ? "double" : "float") << std::endl;
+    //std::cerr << "HERE: amrex::Real is " << ((sizeof(amrex::Real) == sizeof(double)) ? "double" : "float") << std::endl;
     for (i = 0; i < plot_var_map.size(); i++)
     {
         auto local_sum = plotMF.sum(plot_var_map[i].second, true);
         auto global_sum = plotMF.sum(plot_var_map[i].second, false);
-        std::cerr << "HERE: varnames[i] = " << varnames[i] << ", global sum = " << global_sum << ", local sum = " << local_sum << std::endl;
+        //std::cerr << "HERE: varnames[i] = " << varnames[i] << ", global sum = " << global_sum << ", local sum = " << local_sum << std::endl;
     }
 
     //
@@ -329,7 +329,7 @@ Nyx::writePlotFilePost (const std::string& dir, ostream& /*os*/)
 
 #ifdef AMREX_PARTICLES
     //
-    // Write the particles and `comoving_a` in a plotfile directory. 
+    // Write the particles and `comoving_a` in a plotfile directory.
     //
     particle_plot_file(dir);
 #endif
@@ -1099,7 +1099,7 @@ Nyx::blueprint_check_point ()
                            bp_mesh);
 #endif
     //conduit::Node bp_particles;
-#ifdef AMREX_PARTICLES    
+#ifdef AMREX_PARTICLES
     Vector<std::string> particle_varnames;
     particle_varnames.push_back("particle_mass");
     particle_varnames.push_back("particle_xvel");
@@ -1114,7 +1114,7 @@ Nyx::blueprint_check_point ()
 
 #ifdef NEUTRINO_PARTICLES
 
-#ifdef NEUTRINO_DARK_PARTICLES    
+#ifdef NEUTRINO_DARK_PARTICLES
     Vector<std::string> neutrino_varnames;
     neutrino_varnames.push_back("neutrino_mass");
     neutrino_varnames.push_back("neutrino_xvel");
@@ -1136,9 +1136,9 @@ Nyx::blueprint_check_point ()
     // amrex::Print()<<particle_varnames.size()<<4<<std::endl;
 
     ///////////////////////////////////////////////////////////////////////////
-    // Uncomment below to: 
-    // Save the Blueprint Mesh to a set of files that we can 
-    // view in VisIt. 
+    // Uncomment below to:
+    // Save the Blueprint Mesh to a set of files that we can
+    // view in VisIt.
     // (For debugging and to demonstrate how to do this w/o Ascent)
     ///////////////////////////////////////////////////////////////////////////
     //
@@ -1159,7 +1159,7 @@ Nyx::blueprint_check_point ()
 
     Ascent ascent;
     conduit::Node open_opts;
-    
+
 #ifdef BL_USE_MPI
     // if mpi, we need to provide the mpi comm to ascent
     open_opts["mpi_comm"] = MPI_Comm_c2f(ParallelDescriptor::Communicator());
@@ -1168,7 +1168,7 @@ Nyx::blueprint_check_point ()
     ascent.open(open_opts);
     // publish structured mesh to ascent
     ascent.publish(bp_mesh);
-    
+
     // call ascent, with empty actions.
     // actions below will be overridden by those in
     // ascent_actions.yaml
