@@ -6,6 +6,8 @@
 #include <AMReX_buildInfo.H>
 #include <Forcing.H>
 
+#include "timer.hpp"
+
 void mt_write(std::ofstream& output);
 
 using namespace amrex;
@@ -77,10 +79,10 @@ Nyx::writePlotFilePre (const std::string& /*dir*/, ostream& /*os*/)
 {
     if(write_hdf5 == 1 && (parent->maxLevel() > 0))
         amrex::Error("Calling single-level hdf5 interface for multilevel code (max_level > 0)");
-    if(write_skip_prepost == 1)
-    {
-        amrex::Print()<<"Skip writePlotFilePre"<<std::endl;
-    }
+    //if(write_skip_prepost == 1)
+    //{
+    //    amrex::Print()<<"Skip writePlotFilePre"<<std::endl;
+    //}
 #ifdef AMREX_PARTICLES
     else
     {
@@ -248,9 +250,15 @@ Nyx::writePlotFile (const std::string& dir,
         }
     }
 
+    Timer timer;
+
     WriteSingleLevelPlotfileHDF5MD(dir_final,
                           plotMF, varnames,
                           Geom(), cur_time, nStep());
+
+    amrex::Print() << "Nyx: WriteSingleLevelPlotfileHDF5MD took " << timer.elapsed() << " sec" << std::endl;
+
+
 //                          const std::string &versionName,
 //                          const std::string &levelPrefix,
 //                          const std::string &mfPrefix,
@@ -274,7 +282,8 @@ Nyx::writePlotFilePost (const std::string& dir, ostream& /*os*/)
 
     if(write_skip_prepost == 1)
     {
-        amrex::Print()<<"Skip writePlotFilePost"<<std::endl;
+        ;
+        //amrex::Print()<<"Skip writePlotFilePost"<<std::endl;
     }
     else
     {
