@@ -266,7 +266,13 @@ Nyx::writePlotFile (const std::string& dir,
     }
     else
 #endif
+    {
+        Timer timer;
+
         AmrLevel::writePlotFile(dir, os, how);
+
+        amrex::Print() << "Nyx: AmrLevel::writePlotFile " << dir << " took " << timer.elapsed() << " sec" << std::endl;
+    }
 
 }
 
