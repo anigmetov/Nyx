@@ -256,7 +256,7 @@ Nyx::writePlotFile (const std::string& dir,
                           plotMF, varnames,
                           Geom(), cur_time, nStep());
 
-    amrex::Print() << "Nyx: WriteSingleLevelPlotfileHDF5MD took " << timer.elapsed() << " sec" << std::endl;
+    amrex::Print() << "Nyx: WriteSingleLevelPlotfileHDF5MD " << dir_final << " took " << timer.elapsed() << " sec" << std::endl;
 
 
 //                          const std::string &versionName,
