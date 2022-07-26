@@ -7,8 +7,16 @@ project(Nyx
    LANGUAGES    C CXX
    )
 
+# for LowFive + Henson experiments only:
+find_path(HENSON_BUILD_DIR   libhenson.a REQUIRED)
+find_path(AMReX_DIR          AMReX_Config.cmake REQUIRED)
+# this is really bad, should only be used in these experiments
+find_path(CMAKE_PREFIX_PATH  include/AMReX.H REQUIRED)
+
+
 # Set the search path for cmake modules
 set( CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake )
+
 
 #
 # This sets CMAKE_CXX_FLAGS_<CONFIG> to a default value
@@ -31,6 +39,7 @@ if ( NOT CMAKE_BUILD_TYPE )
 else ()
    message(STATUS "Build type set by user to '${CMAKE_BUILD_TYPE}'.")
 endif()
+
 
 ##############################################################################
 #                                                                            #
