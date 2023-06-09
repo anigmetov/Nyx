@@ -133,6 +133,10 @@ if (Nyx_SUNDIALS)
 endif ()
 include(NyxSetupAMReX)
 
+if (Nyx_TORCH)
+    find_package(Torch REQUIRED PATHS Torch_DIR)
+endif()
+
 
 ##############################################################################
 #                                                                            #

@@ -80,6 +80,11 @@ if (Nyx_SUNDIALS)
 endif ()
 
 
+if (Nyx_TORCH)
+    target_compile_options(nyxcore PUBLIC ${TORCH_CXX_FLAGS})
+    target_link_libraries(nyxcore PUBLIC ${TORCH_LIBRARIES})
+endif()
+
 ##############################################################################
 #                                                                            #
 #                               Nyx sources                                  #
