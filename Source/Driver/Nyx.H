@@ -41,6 +41,11 @@ using namespace ascent;
 #include <hdf5.h>
 #endif
 
+#ifdef NYX_USE_TORCH
+#include <torch/script.h>
+#endif
+
+
 using std::istream;
 using std::ostream;
 #ifdef AMREX_PARTICLES
@@ -68,6 +73,14 @@ enum StateType {
 };
 static constexpr int max_prob_param = 20;
 #endif
+
+#ifdef NYX_USE_TORCH
+// declare global variable to store model
+// Module has default ctor, is declared in Nyx_setup.cpp
+extern torch::jit::script::Module heatcool_net;
+#endif
+
+
 
 //
 // AmrLevel-derived class for hyperbolic conservation equations for stellar
@@ -519,13 +532,13 @@ public:
 
     void update_state_with_sources( amrex::MultiFab& S_old      , amrex::MultiFab& S_new,
                                     amrex::MultiFab& ext_src_old, amrex::MultiFab& hydro_src,
-                                    amrex::MultiFab& grav       , 
+                                    amrex::MultiFab& grav       ,
 #ifdef SDC
                                     amrex::MultiFab& reset_e_src,
 #endif
                                     amrex::Real dt, amrex::Real a_old, amrex::Real a_new);
 
-    void enforce_minimum_density  ( amrex::MultiFab& S_old      , amrex::MultiFab& S_new, 
+    void enforce_minimum_density  ( amrex::MultiFab& S_old      , amrex::MultiFab& S_new,
 #ifdef SDC
                                     amrex::MultiFab& hydro_source,
                                     amrex::MultiFab& reset_e_src,
@@ -782,7 +795,7 @@ int integrate_state_struct
 
     // specifies the memory priority
     static int reuse_mlpoisson;
-  
+
     //
     // This amrex::MultiFab is used for the level coarser than this level to mask out
     // this level.  We only build this when it is needed.

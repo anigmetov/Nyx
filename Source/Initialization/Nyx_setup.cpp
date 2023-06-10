@@ -15,8 +15,19 @@
 
 #include <Forcing.H>
 
+#ifdef NYX_USE_TORCH
+#include <torch/torch.h>
+#include <torch/script.h>
+#endif
+
 using namespace amrex;
 using std::string;
+
+#ifdef NYX_USE_TORCH
+// define heatcool_net
+torch::jit::script::Module heatcool_net {};
+#endif
+
 
 static Box the_same_box(const Box& b)
 {
@@ -162,6 +173,10 @@ Nyx::heatcool_setup ()
     amrex::Real mean_rhob = comoving_OmB * 3.e0*(comoving_h*100.e0)*(comoving_h*100.e0) / (8.e0*M_PI*Gconst);
     tabulate_rates(file_in, mean_rhob);
     amrex::Gpu::streamSynchronize();
+#ifdef NYX_USE_TORCH
+    // TODO: read path from pp_nyx
+    heatcool_net = torch::jit::load("heatcool_net.pt");
+#endif
 }
 #endif
 
@@ -173,7 +188,7 @@ Nyx::hydro_setup()
     //
     int cnt = 6;
 
-    // Note that we must set NDIAG_C before we call set_method_params 
+    // Note that we must set NDIAG_C before we call set_method_params
     int NDIAG_C;
     if (inhomo_reion > 0)
     {
@@ -384,7 +399,7 @@ Nyx::hydro_setup()
     //
     // Gravitational forcing
     //
-    //if (do_grav)  
+    //if (do_grav)
     //{
     //derive_lst.add("rhog",IndexType::TheCellType(),1,
     //               rhog,the_same_box);
@@ -502,7 +517,7 @@ Nyx::hydro_setup()
                    dermagmom, the_same_box);
     derive_lst.addComponent("magmom", desc_lst, State_Type, Xmom_comp, AMREX_SPACEDIM);
 
-    if (do_grav)  
+    if (do_grav)
     {
          derive_lst.add("maggrav", IndexType::TheCellType(), 1,
                         dermaggrav,

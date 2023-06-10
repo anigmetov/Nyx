@@ -82,6 +82,7 @@ endif ()
 
 if (Nyx_TORCH)
     target_compile_options(nyxcore PUBLIC ${TORCH_CXX_FLAGS})
+    target_compile_definitions(nyxcore PUBLIC NYX_USE_TORCH)
     target_link_libraries(nyxcore PUBLIC ${TORCH_LIBRARIES})
 endif()
 
