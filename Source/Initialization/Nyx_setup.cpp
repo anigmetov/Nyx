@@ -23,12 +23,6 @@
 using namespace amrex;
 using std::string;
 
-#ifdef NYX_USE_TORCH
-// define heatcool_net
-torch::jit::script::Module heatcool_net {};
-#endif
-
-
 static Box the_same_box(const Box& b)
 {
     return b;
@@ -174,11 +168,17 @@ Nyx::heatcool_setup ()
     tabulate_rates(file_in, mean_rhob);
     amrex::Gpu::streamSynchronize();
 #ifdef NYX_USE_TORCH
-    // TODO: read path from pp_nyx
-    heatcool_net = torch::jit::load("heatcool_net.pt");
+    std::string heatcool_torch_file;
+    pp_nyx.query("heatcool_torch_file", heatcool_torch_file);
+    heat_cool_model = torch::jit::load(heatcool_torch_file);
 #endif
 }
 #endif
+
+#ifdef NYX_USE_TORCH
+torch::jit::script::Module Nyx::heat_cool_model {};
+#endif
+
 
 void
 Nyx::hydro_setup()

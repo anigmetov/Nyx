@@ -715,20 +715,18 @@ int Nyx::integrate_state_struct_mfin
 }
 
 #ifdef NYX_USE_TORCH
-torch::Tensor prepare_torch_inputs(amrex::Array4<Real> const& state4,
-                                   amrex::Array4<Real> const& hydro_src4,
+decltype(auto) prepare_torch_inputs(amrex::Array4<Real> const& state4,
+                                    amrex::Array4<Real> const& hydro_src4,
                                    amrex::Real delta_time,
                                    RhsData* f_rhs_data,
                                    const Box& tbx,
-                                   amrex::Real a,
-                                   amrex::Real time_in)
+                                   amrex::Real a)
 {
     torch::Tensor e;
     torch::Tensor rho_init;
     torch::Tensor rhoe_src;
     torch::Tensor e_src;
     torch::Tensor a_tensor;
-    torch::Tensor time_in_tensor;
 
     const auto len = amrex::length(tbx);  // length of box
     const auto lo = amrex::lbound(tbx);
@@ -738,22 +736,12 @@ torch::Tensor prepare_torch_inputs(amrex::Array4<Real> const& state4,
     int shape_y = hi.y - lo.y + 1;
     int shape_z = hi.z - lo.z + 1;
 
-//    react_in_arr(i,j,k,comp1++) = eptr[idx];
-//    react_in_arr(i,j,k,comp1++) = f_rhs_data->rho_init_vode[idx];
-//    react_in_arr(i,j,k,comp1++) = f_rhs_data->rhoe_src_vode[idx];
-//    react_in_arr(i,j,k,comp1++) = f_rhs_data->e_src_vode[idx];
-//    react_in_arr(i,j,k,comp1++) = f_rhs_data->a;
-//    react_in_arr(i,j,k,comp1++) = time_in;
-
-
-
     // TODO: Fortran order vs C order???
     rho_init = torch::from_blob(f_rhs_data->rho_init_vode, {shape_x, shape_y, shape_z});
     rhoe_src = torch::from_blob(f_rhs_data->rhoe_src_vode, {shape_x, shape_y, shape_z});
     e_src = torch::from_blob(f_rhs_data->e_src_vode, {shape_x, shape_y, shape_z});
 
     a_tensor = torch::full_like(rho_init, a);
-    time_in_tensor = torch::full_like(rho_init, time_in);
 
     for (int k = lo.z; k <= hi.z; ++k) {
         for (int j = lo.y; j <= hi.y; ++j) {
@@ -763,8 +751,40 @@ torch::Tensor prepare_torch_inputs(amrex::Array4<Real> const& state4,
         }
     }
 
-    return torch::concat({e, rho_init, rhoe_src, e_src, a_tensor, time_in_tensor});
+    auto input_tensor = torch::concat({e, rho_init, rhoe_src, e_src, a_tensor});
+
+    std::vector<torch::jit::IValue> inputs;
+    inputs.push_back(input_tensor);
+
+    return inputs;
 }
+
+
+int Nyx::integrate_state_struct_mfin_torch
+  (amrex::Array4<Real> const& state4,
+   amrex::Array4<Real> const& diag_eos4,
+   amrex::Array4<Real> const& state_n4,
+   amrex::Array4<Real> const& hydro_src4,
+   amrex::Array4<Real> const& reset_src4,
+   amrex::Array4<Real> const& IR4,
+   amrex::Array4<Real> const& react_in_arr,
+   amrex::Array4<Real> const& react_out_arr,
+   amrex::Array4<Real> const& react_out_work_arr,
+   const Box& tbx,
+   const Real& a, const amrex::Real& a_end, const Real& delta_time,
+   long int& old_max_steps, long int& new_max_steps,
+   const int sdc_iter)
+{
+
+    auto f_rhs_data = (RhsData*)The_Arena()->alloc(sizeof(RhsData));
+    Real gamma_minus_1 = gamma - 1.0;
+    ode_eos_setup(f_rhs_data, gamma_minus_1, h_species);
+
+    auto torch_inputs = prepare_torch_inputs(state4, hydro_src4, delta_time, f_rhs_data, tbx, a);
+    auto ys = heat_cool_model.forward(torch_inputs).toTensor();
+    return 0;
+}
+
 #endif
 
 

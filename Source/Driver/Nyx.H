@@ -74,14 +74,6 @@ enum StateType {
 static constexpr int max_prob_param = 20;
 #endif
 
-#ifdef NYX_USE_TORCH
-// declare global variable to store model
-// Module has default ctor, is declared in Nyx_setup.cpp
-extern torch::jit::script::Module heatcool_net;
-#endif
-
-
-
 //
 // AmrLevel-derived class for hyperbolic conservation equations for stellar
 // media
@@ -591,6 +583,27 @@ int integrate_state_struct
    const amrex::Real& delta_time,
    long int& old_max_steps, long int& new_max_steps,
    const int sdc_iter);
+
+#ifdef NYX_USE_TORCH
+  static torch::jit::script::Module heat_cool_model;
+
+
+  int integrate_state_struct_mfin_torch
+  (amrex::Array4<amrex::Real> const& state4,
+   amrex::Array4<amrex::Real> const& diag_eos4,
+   amrex::Array4<amrex::Real> const& state_n4,
+   amrex::Array4<amrex::Real> const& hydro_src4,
+   amrex::Array4<amrex::Real> const& reset_src4,
+   amrex::Array4<amrex::Real> const& IR4,
+   amrex::Array4<amrex::Real> const& react_in_arr,
+   amrex::Array4<amrex::Real> const& react_out_arr,
+   amrex::Array4<amrex::Real> const& react_out_work_arr,
+   const amrex::Box& tbx,
+   const amrex::Real& a, const amrex::Real& a_end,
+   const amrex::Real& delta_time,
+   long int& old_max_steps, long int& new_max_steps,
+   const int sdc_iter);
+#endif
 
   int integrate_state_cell(amrex::MultiFab &state,   amrex::MultiFab &diag_eos, const amrex::Real& a, const amrex::Real& delta_time);
    int integrate_state_growncell(amrex::MultiFab &state,   amrex::MultiFab &diag_eos, const amrex::Real& a, const amrex::Real& delta_time);
