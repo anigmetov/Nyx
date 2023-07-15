@@ -168,9 +168,9 @@ Nyx::heatcool_setup ()
     tabulate_rates(file_in, mean_rhob);
     amrex::Gpu::streamSynchronize();
 #ifdef NYX_USE_TORCH
-    std::string heatcool_torch_file;
-    pp_nyx.query("heatcool_torch_file", heatcool_torch_file);
-    heat_cool_model = torch::jit::load(heatcool_torch_file);
+    std::string heat_cool_torch_file;
+    pp_nyx.query("heat_cool_torch_file", heat_cool_torch_file);
+    heat_cool_model = torch::jit::load(heat_cool_torch_file);
 #endif
 }
 #endif
