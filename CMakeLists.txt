@@ -9,7 +9,6 @@ project(Nyx
 
 # Set the search path for cmake modules
 set( CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake )
-
 #
 # This sets CMAKE_CXX_FLAGS_<CONFIG> to a default value
 # if the variable is empty
@@ -80,6 +79,7 @@ cmake_dependent_option(Nyx_GIMLET "" NO "Nyx_MPI;Nyx_OMP" NO)
 option( Nyx_CONST_SPECIES "Don't evolve H and He, treat them as constant" ON)
 option( Nyx_CGS   "Evolve quantities in CGS units instead of code units" NO)
 option( Nyx_REEBER             "" NO)
+option( Nyx_LOWFIVE   "Enable LowFive experiments (HDF5, Henson)" OFF)
 
 #  These two are only really used by LyA_Neutrinos
 option( Nyx_NEUTRINO_PARTICLES "" NO)
@@ -118,7 +118,6 @@ set(Nyx_AGN  NO  CACHE INTERNAL "AGN is broken at the moment")
 set(Nyx_GRAVITY   YES CACHE INTERNAL "Enable gravity (should always be on)")
 set(Nyx_PARTICLES YES CACHE INTERNAL "Enable particles (should always be on)")
 
-
 if (Nyx_GPU_BACKEND STREQUAL CUDA)
     enable_language(CUDA)
 endif ()
@@ -132,6 +131,14 @@ if (Nyx_SUNDIALS)
    include(NyxSetupSUNDIALS)
 endif ()
 include(NyxSetupAMReX)
+
+
+if (Nyx_LOWFIVE)
+# for LowFive + Henson experiments only:
+    find_path(HENSON_BUILD_DIR   libhenson.a REQUIRED)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+#find_path(AMReX_DIR          AMReX_Config.cmake REQUIRED)
+endif()
 
 
 ##############################################################################

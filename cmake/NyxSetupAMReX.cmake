@@ -40,6 +40,9 @@ if (AMReX_FOUND)
    else ()
       list(APPEND AMREX_REQUIRED_COMPONENTS PDOUBLE)
    endif ()
+   if (Nyx_HDF5)
+      list(APPEND AMREX_REQUIRED_COMPONENTS HDF5)
+   endif()
 
    # We now check again for the AMReX package.
    # This time we mark AMReX + its required components as REQUIRED.
@@ -114,6 +117,12 @@ else ()
    else ()
       set(AMReX_PARTICLES_PRECISION DOUBLE CACHE INTERNAL "" )
    endif ()
+
+   if (Nyx_LOWFIVE)
+       set(AMReX_HDF5              ON                      CACHE INTERNAL "" )
+       set(AMReX_PIC               ON                      CACHE INTERNAL "" )
+       set(AMReX_BUILD_SHARED_LIBS ON                      CACHE INTERNAL "" )
+   endif()
 
    list(APPEND CMAKE_MODULE_PATH ${AMREX_SRC_DIR}/Tools/CMake)
 

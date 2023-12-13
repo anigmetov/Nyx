@@ -7,5 +7,9 @@ list(APPEND _input_files ascent_actions_nohydro.yaml ascent_actions.yaml ascent_
 # setup_nyx_executable(_sources _input_files)
 nyx_setup_executable(_sources _input_files)
 
+if (Nyx_LOWFIVE)
+    nyx_setup_hx_executable(_sources _input_files)
+endif()
+
 unset(_sources)
 unset(_input_files)

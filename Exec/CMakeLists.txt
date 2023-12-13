@@ -1,4 +1,5 @@
 include(NyxSetupExecutable)
+include(NyxSetupHxExecutable)
 
 add_subdirectory(AMR-density)
 
